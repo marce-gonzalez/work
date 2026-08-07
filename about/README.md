@@ -1,28 +1,29 @@
-# Nombre Apellido
+# Marcela González
 
 ## Perfil
 
-**Disciplina / formación:**  
-**Qué hago hoy:**  
-**Qué me gustaría aprender en este curso:**  
+**Disciplina / formación:** Arquitecta y fotógrafa
+**Qué hago hoy:** Dirijo un estudio de diseño y fabricación, donde hacemos prototipos, mobiliario y museografía.
+**Qué me gustaría aprender en este curso:** Formas de representación interactiva, reinterpretar datos de la naturaleza y el territorio.
 
 ## Intereses
 
-- Tema o disciplina 1
-- Tema o disciplina 2
-- Tema o disciplina 3
+- Oficios y fabricación digital
+- Ecología y materiales biobasados
+- Fotografía y video
+- Café de especialidad
 
 ## Una pregunta que me interesa explorar
 
-Escribe una pregunta pequeña que pueda transformarse en reglas, datos, geometría, imágenes o interacción.
+¿Cómo puede la tecnología asistir proceso biológicos en la ciudad?.
 
 ## Algo que me inspira
 
 Agrega una imagen local en `assets/images/` y cítala con Markdown, o agrega un link a un proyecto/referencia.
 
-```md
-![Descripción de la imagen](../assets/images/mi-imagen.jpg)
-```
+
+![Descripción de la imagen](../assets/images/1.jpg)
+
 
 ## Links
 
