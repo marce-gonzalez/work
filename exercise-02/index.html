@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campo Generativo 01</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="viewport-shell">
+      <header class="project-header">
+        <div>
+          <p class="eyebrow">COMPUTACIÓN AVANZADA · MCD UAI</p>
+          <h1>Campo Generativo 01</h1>
+          <p class="subtitle">
+            Un sistema tridimensional simple para explorar reglas, parámetros e iteración.
+          </p>
+        </div>
+      </header>
+
+      <div id="viewport"></div>
+
+      <div class="hint">
+        Arrastra para orbitar · Rueda para acercar · Click derecho para desplazar
+      </div>
+    </section>
+
+    <aside class="controls-panel">
+      <div class="panel-header">
+        <p class="eyebrow">PARÁMETROS</p>
+        <h2>Espacio de diseño</h2>
+      </div>
+
+      <section class="control-group">
+        <h3>Sistema</h3>
+
+        <label>
+          <span>Columnas</span>
+          <output id="columnas-valor">15</output>
+          <input id="columnas" type="range" min="5" max="30" step="1" value="15" />
+        </label>
+
+        <label>
+          <span>Filas</span>
+          <output id="filas-valor">15</output>
+          <input id="filas" type="range" min="5" max="30" step="1" value="15" />
+        </label>
+
+        <label>
+          <span>Separación</span>
+          <output id="separacion-valor">1.20</output>
+          <input id="separacion" type="range" min="0.7" max="2.0" step="0.05" value="1.2" />
+        </label>
+      </section>
+
+      <section class="control-group">
+        <h3>Comportamiento</h3>
+
+        <label>
+          <span>Amplitud</span>
+          <output id="amplitud-valor">3.00</output>
+          <input id="amplitud" type="range" min="0" max="6" step="0.1" value="3" />
+        </label>
+
+        <label>
+          <span>Frecuencia</span>
+          <output id="frecuencia-valor">0.40</output>
+          <input id="frecuencia" type="range" min="0.05" max="1.2" step="0.05" value="0.4" />
+        </label>
+
+        <label>
+          <span>Rotación</span>
+          <output id="rotacion-valor">0.30</output>
+          <input id="rotacion" type="range" min="0" max="1.2" step="0.05" value="0.3" />
+        </label>
+      </section>
+
+      <section class="control-group">
+        <h3>Variación</h3>
+
+        <label>
+          <span>Aleatoriedad</span>
+          <output id="aleatoriedad-valor">0.00</output>
+          <input id="aleatoriedad" type="range" min="0" max="1.5" step="0.05" value="0" />
+        </label>
+
+        <label>
+          <span>Semilla</span>
+          <output id="semilla-valor">42</output>
+          <input id="semilla" type="range" min="1" max="100" step="1" value="42" />
+        </label>
+      </section>
+
+      <div class="actions">
+        <button id="regenerar">Regenerar</button>
+        <button id="restablecer" class="secondary">Restablecer</button>
+      </div>
+
+      <footer class="panel-footer">
+        <p>
+          Pregunta guía:<br />
+          <strong>¿Qué cambia cuando diseñamos las reglas y no una forma única?</strong>
+        </p>
+      </footer>
+    </aside>
+  </main>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
