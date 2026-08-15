@@ -14,6 +14,11 @@ const valoresIniciales = {
   rotacion: 0.3,
   aleatoriedad: 0.0,
   semilla: 42,
+
+  // Intensidad de la variación cromática.
+  // 0 = todos los módulos tienen el mismo color.
+  // 1 = máxima variación según la altura.
+  variacionColor: 0.7,
 };
 
 const parametros = { ...valoresIniciales };
@@ -94,6 +99,8 @@ escena.add(grupoCampo);
 const geometriaModulo = new THREE.BoxGeometry(0.76, 1, 0.76);
 
 const materialModulo = new THREE.MeshStandardMaterial({
+  const colorBajo = new THREE.Color(0x29465b);
+const colorAlto = new THREE.Color(0xf2a65a);
   color: 0xd7d2c8,
   roughness: 0.58,
   metalness: 0.03,
