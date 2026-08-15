@@ -15,10 +15,6 @@ const valoresIniciales = {
   aleatoriedad: 0.0,
   semilla: 42,
 
-  // Intensidad de la variación cromática.
-  // 0 = todos los módulos tienen el mismo color.
-  // 1 = máxima variación según la altura.
-  variacionColor: 0.7,
 };
 
 const parametros = { ...valoresIniciales };
