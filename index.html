@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Perfil de Marcela González para el curso Computación Avanzada.">
+  <title>Marcela González — Computación Avanzada</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.1.0/dist/model-viewer.min.js"></script>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">Computación Avanzada</p>
+      <h1>Marcela<br>González</h1>
+      <p class="lead">Arquitecta y fotógrafa. Dirijo un estudio de diseño y fabricación: hacemos prototipos, mobiliario y museografía.</p>
+    </header>
+
+    <section class="section two-columns" aria-labelledby="perfil-title">
+      <div>
+        <p class="section-number" aria-hidden="true">01</p>
+        <h2 id="perfil-title">Perfil</h2>
+      </div>
+      <div class="section-content">
+        <p>Me gustaría aprender formas de representación interactiva y reinterpretar datos de la naturaleza y el territorio.</p>
+        <h3>Intereses</h3>
+        <ul>
+          <li>Oficios y fabricación digital</li>
+          <li>Ecología y materiales biobasados</li>
+          <li>Fotografía y video</li>
+          <li>Café de especialidad</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section question" aria-labelledby="pregunta-title">
+      <p class="section-number" aria-hidden="true">02</p>
+      <h2 id="pregunta-title">Una pregunta que me interesa explorar</h2>
+      <p>¿Cómo puede la tecnología asistir procesos biológicos en el diseño?</p>
+    </section>
+
+    <section class="section" aria-labelledby="modelo-title">
+      <div class="model-heading">
+        <div>
+          <p class="section-number" aria-hidden="true">03</p>
+          <h2 id="modelo-title">Modelo 3D</h2>
+        </div>
+        <p>Arrastra para orbitar · Pellizca o usa la rueda para acercar</p>
+      </div>
+      <div class="model-frame">
+        <model-viewer
+          src="./assets/models/MODELO%20GLB.gltf"
+          alt="Modelo tridimensional interactivo del proyecto"
+          camera-controls
+          touch-action="pan-y"
+          interaction-prompt="auto"
+          shadow-intensity="0.8"
+          environment-image="neutral"
+          camera-orbit="35deg 70deg auto"
+          min-camera-orbit="auto 10deg auto"
+          max-camera-orbit="auto 90deg auto"
+          bounds="tight"
+          loading="eager">
+          <p class="model-fallback">Tu navegador no pudo mostrar el modelo 3D. <a href="./assets/models/MODELO%20GLB.gltf">Descárgalo aquí</a>.</p>
+        </model-viewer>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="inspiracion-title">
+      <p class="section-number" aria-hidden="true">04</p>
+      <h2 id="inspiracion-title">Algo que me inspira</h2>
+      <div class="gallery">
+        <img src="./assets/images/1.jpg" alt="Imagen de inspiración del proyecto" loading="lazy">
+        <img src="./assets/images/2.jpg" alt="Imagen de inspiración del proyecto" loading="lazy">
+      </div>
+    </section>
+
+    <footer class="footer">
+      <p class="eyebrow">Referencias</p>
+      <nav aria-label="Referencias externas">
+        <a href="https://periscopioatelier.cl/" target="_blank" rel="noopener noreferrer">Periscopio Atelier ↗</a>
+        <a href="https://www.ecologicstudio.com/" target="_blank" rel="noopener noreferrer">ecoLogicStudio ↗</a>
+      </nav>
+    </footer>
+  </main>
+</body>
+</html>
