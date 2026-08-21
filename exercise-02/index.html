@@ -3,118 +3,73 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Campo Generativo 01</title>
+  <title>Crecimiento Orgánico</title>
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
   <main class="app-shell">
     <section class="viewport-shell">
       <header class="project-header">
-        <div>
-          <p class="eyebrow">COMPUTACIÓN AVANZADA · MCD UAI</p>
-          <h1>Campo Generativo 01</h1>
-          <p class="subtitle">
-            Un sistema tridimensional simple para explorar reglas, parámetros e iteración.
-          </p>
-        </div>
+        <p class="eyebrow">COMPUTACIÓN AVANZADA · MCD UAI</p>
+        <h1>Crecimiento Orgánico</h1>
+        <p class="subtitle">Un organismo tridimensional que emerge de reglas locales de crecimiento.</p>
       </header>
-
       <div id="viewport"></div>
-
-      <div class="hint">
-        Arrastra para orbitar · Rueda para acercar · Click derecho para desplazar
-      </div>
+      <div class="hint">Arrastra para orbitar · Rueda para acercar · Click derecho para desplazar</div>
     </section>
 
     <aside class="controls-panel">
       <div class="panel-header">
         <p class="eyebrow">PARÁMETROS</p>
-        <h2>Espacio de diseño</h2>
+        <h2>Reglas de crecimiento</h2>
       </div>
-
-      <section class="control-group">
-        <h3>Sistema</h3>
-
-        <label>
-          <span>Columnas</span>
-          <output id="columnas-valor">15</output>
-          <input id="columnas" type="range" min="5" max="30" step="1" value="15" />
-        </label>
-
-        <label>
-          <span>Filas</span>
-          <output id="filas-valor">15</output>
-          <input id="filas" type="range" min="5" max="30" step="1" value="15" />
-        </label>
-
-        <label>
-          <span>Separación</span>
-          <output id="separacion-valor">1.20</output>
-          <input id="separacion" type="range" min="0.7" max="2.0" step="0.05" value="1.2" />
-        </label>
-      </section>
 
       <section class="control-group">
         <h3>Comportamiento</h3>
-
         <label>
-          <span>Amplitud</span>
-          <output id="amplitud-valor">3.00</output>
-          <input id="amplitud" type="range" min="0" max="6" step="0.1" value="3" />
+          <span>Crecimiento</span><output id="crecimiento-valor">0.45</output>
+          <input id="crecimiento" type="range" min="0" max="1" step="0.01" value="0.45" />
+          <span class="range-labels"><small>Radial</small><small>Direccional</small></span>
         </label>
-
         <label>
-          <span>Frecuencia</span>
-          <output id="frecuencia-valor">0.40</output>
-          <input id="frecuencia" type="range" min="0.05" max="1.2" step="0.05" value="0.4" />
+          <span>Variación</span><output id="variacion-valor">0.35</output>
+          <input id="variacion" type="range" min="0" max="1" step="0.01" value="0.35" />
+          <span class="range-labels"><small>Ordenado</small><small>Aleatorio</small></span>
         </label>
-
         <label>
-          <span>Rotación</span>
-          <output id="rotacion-valor">0.30</output>
-          <input id="rotacion" type="range" min="0" max="1.2" step="0.05" value="0.3" />
+          <span>Color</span><output id="color-valor">0.65</output>
+          <input id="color" type="range" min="0" max="1" step="0.01" value="0.65" />
+          <span class="range-labels"><small>Sutil</small><small>Generacional</small></span>
+        </label>
+        <label>
+          <span>Semilla</span>
+          <input id="semilla" class="number-input" type="number" min="1" max="999999" step="1" value="42" />
         </label>
       </section>
 
-      <section class="control-group">
-        <h3>Variación</h3>
-
-        <label>
-          <span>Aleatoriedad</span>
-          <output id="aleatoriedad-valor">0.00</output>
-          <input id="aleatoriedad" type="range" min="0" max="1.5" step="0.05" value="0" />
-        </label>
-
-        <label>
-          <span>Semilla</span>
-          <output id="semilla-valor">42</output>
-          <input id="semilla" type="range" min="1" max="100" step="1" value="42" />
-        </label>
+      <section class="stats" aria-live="polite">
+        <div><span>Generación</span><strong id="generacion-valor">0</strong></div>
+        <div><span>Nodos</span><strong id="nodos-valor">1</strong></div>
+        <div><span>Ramas activas</span><strong id="ramas-valor">1</strong></div>
       </section>
 
       <div class="actions">
-        <button id="regenerar">Regenerar</button>
-        <button id="restablecer" class="secondary">Restablecer</button>
+        <button id="crecer">Crecer</button>
+        <button id="pausa" class="secondary">Pausa</button>
+        <button id="reiniciar" class="secondary">Reiniciar</button>
       </div>
-
       <footer class="panel-footer">
-        <p>
-          Pregunta guía:<br />
-          <strong>¿Qué cambia cuando diseñamos las reglas y no una forma única?</strong>
-        </p>
+        <p>Los cambios de parámetros afectan las ramas futuras sin modificar las existentes.</p>
       </footer>
     </aside>
   </main>
 
   <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
-      }
-    }
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    } }
   </script>
-
   <script type="module" src="./main.js"></script>
 </body>
 </html>
