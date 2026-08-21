@@ -15,6 +15,9 @@ const parametros = {
   limiteDensidad: 6,
   maximoNodos: 2400,
   intervaloCrecimiento: 120,
+  radioBase: 0.2,
+  reduccionRadio: 0.72,
+  radioMinimo: 0.045,
 };
 
 // 02 — Escena Three.js reutilizada del ejercicio original.
@@ -40,13 +43,39 @@ const suelo = new THREE.GridHelper(40, 40, 0x30343a, 0x1d2024);
 suelo.position.y = -0.02;
 escena.add(suelo);
 
+const luzAmbiente = new THREE.HemisphereLight(0xffe3c2, 0x062d3a, 2.2);
+escena.add(luzAmbiente);
+
+const luzPrincipal = new THREE.DirectionalLight(0xffffff, 3.6);
+luzPrincipal.position.set(8, 14, 10);
+escena.add(luzPrincipal);
+
 // 03 — Sistema de crecimiento orgánico.
 class Organism {
   constructor(scene) {
-    this.geometry = new THREE.BufferGeometry();
-    this.material = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.94 });
-    this.lines = new THREE.LineSegments(this.geometry, this.material);
-    scene.add(this.lines);
+    const volumeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.68,
+      metalness: 0.04,
+    });
+
+    // Un cilindro cónico y una esfera se reutilizan mediante instancias.
+    // Las esferas solapan los extremos y hacen continua cada unión.
+    this.branchVolumes = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(0.78, 1, 1, 8, 1, false),
+      volumeMaterial,
+      parametros.maximoNodos
+    );
+    this.nodeVolumes = new THREE.InstancedMesh(
+      new THREE.IcosahedronGeometry(1, 1),
+      volumeMaterial.clone(),
+      parametros.maximoNodos
+    );
+    this.branchVolumes.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.nodeVolumes.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.branchVolumes.frustumCulled = false;
+    this.nodeVolumes.frustumCulled = false;
+    scene.add(this.branchVolumes, this.nodeVolumes);
 
     this.rootGeometry = new THREE.BufferGeometry();
     this.rootPoints = new THREE.Points(
@@ -116,8 +145,8 @@ class Organism {
     const position = tip.node.position.clone().addScaledVector(direction, length);
     if (this.checkCollision(position, tip.node)) return null;
 
-    const node = this.createNode(position, this.generation);
     const branchLevel = tip.branchLevel + (isBranch ? 1 : 0);
+    const node = this.createNode(position, this.generation, branchLevel);
     this.createBranch(tip.node, node, branchLevel);
     return {
       node,
@@ -128,8 +157,8 @@ class Organism {
     };
   }
 
-  createNode(position, generation) {
-    const node = { id: this.nodes.length, position, generation };
+  createNode(position, generation, branchLevel = 0) {
+    const node = { id: this.nodes.length, position, generation, branchLevel };
     this.nodes.push(node);
     const key = this.gridKey(position);
     if (!this.spatialGrid.has(key)) this.spatialGrid.set(key, []);
@@ -138,7 +167,12 @@ class Organism {
   }
 
   createBranch(start, end, branchLevel) {
-    this.branches.push({ start, end, color: this.colorForBranchLevel(branchLevel) });
+    this.branches.push({
+      start,
+      end,
+      branchLevel,
+      color: this.colorForBranchLevel(branchLevel),
+    });
   }
 
   calculateDirection(tip, isBranch, index) {
@@ -193,18 +227,48 @@ class Organism {
   }
 
   updateGeometry() {
-    const positions = new Float32Array(this.branches.length * 6);
-    const colors = new Float32Array(this.branches.length * 6);
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const verticalAxis = new THREE.Vector3(0, 1, 0);
+
     this.branches.forEach((branch, index) => {
-      const offset = index * 6;
-      branch.start.position.toArray(positions, offset);
-      branch.end.position.toArray(positions, offset + 3);
-      branch.color.toArray(colors, offset);
-      branch.color.toArray(colors, offset + 3);
+      direction.subVectors(branch.end.position, branch.start.position);
+      const length = direction.length();
+      direction.normalize();
+      position.addVectors(branch.start.position, branch.end.position).multiplyScalar(0.5);
+      quaternion.setFromUnitVectors(verticalAxis, direction);
+
+      const radius = this.radiusForBranchLevel(branch.branchLevel);
+      scale.set(radius, length + radius * 0.35, radius);
+      matrix.compose(position, quaternion, scale);
+      this.branchVolumes.setMatrixAt(index, matrix);
+      this.branchVolumes.setColorAt(index, branch.color);
     });
-    this.geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    this.geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    this.geometry.computeBoundingSphere();
+
+    this.nodes.forEach((node, index) => {
+      const radius = this.radiusForBranchLevel(node.branchLevel) * 1.03;
+      scale.setScalar(radius);
+      matrix.compose(node.position, new THREE.Quaternion(), scale);
+      this.nodeVolumes.setMatrixAt(index, matrix);
+      this.nodeVolumes.setColorAt(index, this.colorForBranchLevel(node.branchLevel));
+    });
+
+    this.branchVolumes.count = this.branches.length;
+    this.nodeVolumes.count = this.nodes.length;
+    this.branchVolumes.instanceMatrix.needsUpdate = true;
+    this.nodeVolumes.instanceMatrix.needsUpdate = true;
+    if (this.branchVolumes.instanceColor) this.branchVolumes.instanceColor.needsUpdate = true;
+    if (this.nodeVolumes.instanceColor) this.nodeVolumes.instanceColor.needsUpdate = true;
+  }
+
+  radiusForBranchLevel(branchLevel) {
+    return Math.max(
+      parametros.radioMinimo,
+      parametros.radioBase * Math.pow(parametros.reduccionRadio, branchLevel)
+    );
   }
 
   colorForBranchLevel(branchLevel) {
