@@ -1,0 +1,331 @@
+{
+  "tipo": "dataset_didactico_respaldo",
+  "descripcion": "Datos sintéticos para usar si la API pública no está disponible.",
+  "actualizado": "local",
+  "estaciones": [
+    {
+      "id": "demo-01",
+      "nombre": "Estación didáctica 01",
+      "lat": 40.715071,
+      "lon": -74.007647,
+      "capacidad": 17,
+      "bicicletas": 3,
+      "anclajes_libres": 14
+    },
+    {
+      "id": "demo-02",
+      "nombre": "Estación didáctica 02",
+      "lat": 40.716564,
+      "lon": -73.999818,
+      "capacidad": 17,
+      "bicicletas": 7,
+      "anclajes_libres": 10
+    },
+    {
+      "id": "demo-03",
+      "nombre": "Estación didáctica 03",
+      "lat": 40.714212,
+      "lon": -73.990799,
+      "capacidad": 18,
+      "bicicletas": 8,
+      "anclajes_libres": 10
+    },
+    {
+      "id": "demo-04",
+      "nombre": "Estación didáctica 04",
+      "lat": 40.714372,
+      "lon": -73.982826,
+      "capacidad": 21,
+      "bicicletas": 8,
+      "anclajes_libres": 13
+    },
+    {
+      "id": "demo-05",
+      "nombre": "Estación didáctica 05",
+      "lat": 40.715992,
+      "lon": -73.974351,
+      "capacidad": 17,
+      "bicicletas": 13,
+      "anclajes_libres": 4
+    },
+    {
+      "id": "demo-06",
+      "nombre": "Estación didáctica 06",
+      "lat": 40.714249,
+      "lon": -73.967437,
+      "capacidad": 22,
+      "bicicletas": 10,
+      "anclajes_libres": 12
+    },
+    {
+      "id": "demo-07",
+      "nombre": "Estación didáctica 07",
+      "lat": 40.721357,
+      "lon": -74.006478,
+      "capacidad": 33,
+      "bicicletas": 12,
+      "anclajes_libres": 21
+    },
+    {
+      "id": "demo-08",
+      "nombre": "Estación didáctica 08",
+      "lat": 40.720409,
+      "lon": -73.998386,
+      "capacidad": 26,
+      "bicicletas": 12,
+      "anclajes_libres": 14
+    },
+    {
+      "id": "demo-09",
+      "nombre": "Estación didáctica 09",
+      "lat": 40.720392,
+      "lon": -73.989964,
+      "capacidad": 17,
+      "bicicletas": 7,
+      "anclajes_libres": 10
+    },
+    {
+      "id": "demo-10",
+      "nombre": "Estación didáctica 10",
+      "lat": 40.721589,
+      "lon": -73.982505,
+      "capacidad": 34,
+      "bicicletas": 30,
+      "anclajes_libres": 4
+    },
+    {
+      "id": "demo-11",
+      "nombre": "Estación didáctica 11",
+      "lat": 40.721857,
+      "lon": -73.97474,
+      "capacidad": 33,
+      "bicicletas": 16,
+      "anclajes_libres": 17
+    },
+    {
+      "id": "demo-12",
+      "nombre": "Estación didáctica 12",
+      "lat": 40.722483,
+      "lon": -73.966003,
+      "capacidad": 29,
+      "bicicletas": 3,
+      "anclajes_libres": 26
+    },
+    {
+      "id": "demo-13",
+      "nombre": "Estación didáctica 13",
+      "lat": 40.727823,
+      "lon": -74.006524,
+      "capacidad": 35,
+      "bicicletas": 29,
+      "anclajes_libres": 6
+    },
+    {
+      "id": "demo-14",
+      "nombre": "Estación didáctica 14",
+      "lat": 40.726964,
+      "lon": -73.997159,
+      "capacidad": 21,
+      "bicicletas": 17,
+      "anclajes_libres": 4
+    },
+    {
+      "id": "demo-15",
+      "nombre": "Estación didáctica 15",
+      "lat": 40.727354,
+      "lon": -73.989829,
+      "capacidad": 23,
+      "bicicletas": 16,
+      "anclajes_libres": 7
+    },
+    {
+      "id": "demo-16",
+      "nombre": "Estación didáctica 16",
+      "lat": 40.727365,
+      "lon": -73.981214,
+      "capacidad": 18,
+      "bicicletas": 11,
+      "anclajes_libres": 7
+    },
+    {
+      "id": "demo-17",
+      "nombre": "Estación didáctica 17",
+      "lat": 40.72712,
+      "lon": -73.975049,
+      "capacidad": 45,
+      "bicicletas": 38,
+      "anclajes_libres": 7
+    },
+    {
+      "id": "demo-18",
+      "nombre": "Estación didáctica 18",
+      "lat": 40.728491,
+      "lon": -73.967894,
+      "capacidad": 19,
+      "bicicletas": 9,
+      "anclajes_libres": 10
+    },
+    {
+      "id": "demo-19",
+      "nombre": "Estación didáctica 19",
+      "lat": 40.733522,
+      "lon": -74.006108,
+      "capacidad": 17,
+      "bicicletas": 10,
+      "anclajes_libres": 7
+    },
+    {
+      "id": "demo-20",
+      "nombre": "Estación didáctica 20",
+      "lat": 40.734041,
+      "lon": -73.997121,
+      "capacidad": 42,
+      "bicicletas": 19,
+      "anclajes_libres": 23
+    },
+    {
+      "id": "demo-21",
+      "nombre": "Estación didáctica 21",
+      "lat": 40.73425,
+      "lon": -73.989439,
+      "capacidad": 36,
+      "bicicletas": 2,
+      "anclajes_libres": 34
+    },
+    {
+      "id": "demo-22",
+      "nombre": "Estación didáctica 22",
+      "lat": 40.734922,
+      "lon": -73.983034,
+      "capacidad": 21,
+      "bicicletas": 16,
+      "anclajes_libres": 5
+    },
+    {
+      "id": "demo-23",
+      "nombre": "Estación didáctica 23",
+      "lat": 40.732277,
+      "lon": -73.973795,
+      "capacidad": 22,
+      "bicicletas": 8,
+      "anclajes_libres": 14
+    },
+    {
+      "id": "demo-24",
+      "nombre": "Estación didáctica 24",
+      "lat": 40.733294,
+      "lon": -73.96535,
+      "capacidad": 45,
+      "bicicletas": 6,
+      "anclajes_libres": 39
+    },
+    {
+      "id": "demo-25",
+      "nombre": "Estación didáctica 25",
+      "lat": 40.738599,
+      "lon": -74.006895,
+      "capacidad": 31,
+      "bicicletas": 29,
+      "anclajes_libres": 2
+    },
+    {
+      "id": "demo-26",
+      "nombre": "Estación didáctica 26",
+      "lat": 40.738511,
+      "lon": -73.998808,
+      "capacidad": 31,
+      "bicicletas": 23,
+      "anclajes_libres": 8
+    },
+    {
+      "id": "demo-27",
+      "nombre": "Estación didáctica 27",
+      "lat": 40.739346,
+      "lon": -73.991024,
+      "capacidad": 38,
+      "bicicletas": 15,
+      "anclajes_libres": 23
+    },
+    {
+      "id": "demo-28",
+      "nombre": "Estación didáctica 28",
+      "lat": 40.738553,
+      "lon": -73.983571,
+      "capacidad": 28,
+      "bicicletas": 22,
+      "anclajes_libres": 6
+    },
+    {
+      "id": "demo-29",
+      "nombre": "Estación didáctica 29",
+      "lat": 40.7388,
+      "lon": -73.974645,
+      "capacidad": 25,
+      "bicicletas": 9,
+      "anclajes_libres": 16
+    },
+    {
+      "id": "demo-30",
+      "nombre": "Estación didáctica 30",
+      "lat": 40.738946,
+      "lon": -73.967663,
+      "capacidad": 37,
+      "bicicletas": 21,
+      "anclajes_libres": 16
+    },
+    {
+      "id": "demo-31",
+      "nombre": "Estación didáctica 31",
+      "lat": 40.746959,
+      "lon": -74.006029,
+      "capacidad": 46,
+      "bicicletas": 40,
+      "anclajes_libres": 6
+    },
+    {
+      "id": "demo-32",
+      "nombre": "Estación didáctica 32",
+      "lat": 40.746065,
+      "lon": -73.997881,
+      "capacidad": 43,
+      "bicicletas": 36,
+      "anclajes_libres": 7
+    },
+    {
+      "id": "demo-33",
+      "nombre": "Estación didáctica 33",
+      "lat": 40.745277,
+      "lon": -73.990903,
+      "capacidad": 20,
+      "bicicletas": 16,
+      "anclajes_libres": 4
+    },
+    {
+      "id": "demo-34",
+      "nombre": "Estación didáctica 34",
+      "lat": 40.746003,
+      "lon": -73.983913,
+      "capacidad": 18,
+      "bicicletas": 7,
+      "anclajes_libres": 11
+    },
+    {
+      "id": "demo-35",
+      "nombre": "Estación didáctica 35",
+      "lat": 40.745422,
+      "lon": -73.97577,
+      "capacidad": 17,
+      "bicicletas": 4,
+      "anclajes_libres": 13
+    },
+    {
+      "id": "demo-36",
+      "nombre": "Estación didáctica 36",
+      "lat": 40.744101,
+      "lon": -73.967646,
+      "capacidad": 20,
+      "bicicletas": 12,
+      "anclajes_libres": 8
+    }
+  ]
+}

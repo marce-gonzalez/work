@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campo de Datos 01</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="viewport-shell">
+      <header class="project-header">
+        <p class="eyebrow">COMPUTACIÓN AVANZADA · MCD UAI</p>
+        <h1>Campo de Datos 01</h1>
+        <p class="subtitle">Estado vivo de un sistema de bicicletas compartidas transformado en geometría.</p>
+      </header>
+
+      <div id="viewport"></div>
+
+      <div class="legend">
+        <span><i class="dot bikes"></i>Bicicletas disponibles</span>
+        <span><i class="dot empty"></i>Capacidad restante</span>
+      </div>
+
+      <div class="hint">Arrastra para orbitar · Rueda para acercar · Click en una estación para inspeccionarla</div>
+    </section>
+
+    <aside class="controls-panel">
+      <div class="panel-header">
+        <p class="eyebrow">FUENTE + REPRESENTACIÓN</p>
+        <h2>Sistema vivo</h2>
+      </div>
+
+      <section class="status-card">
+        <div class="status-row">
+          <span>Fuente</span>
+          <strong id="fuente-label">Cargando…</strong>
+        </div>
+        <div class="status-row">
+          <span>Estado</span>
+          <strong id="estado-label"><i class="status-dot"></i> conectando</strong>
+        </div>
+        <div class="status-row">
+          <span>Última actualización</span>
+          <strong id="actualizacion-label">—</strong>
+        </div>
+        <div class="status-row">
+          <span>Próxima consulta</span>
+          <strong id="cuenta-regresiva">—</strong>
+        </div>
+      </section>
+
+      <section class="control-group">
+        <h3>Representación</h3>
+
+        <label class="select-label">
+          <span>Distribución</span>
+          <select id="modo-distribucion">
+            <option value="geografico">Geográfica · lat/lon → X/Z</option>
+            <option value="ocupacion">Ordenada · ocupación</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Escala vertical</span>
+          <output id="escala-altura-valor">0.15</output>
+          <input id="escala-altura" type="range" min="0.05" max="0.3" step="0.01" value="0.15" />
+        </label>
+
+        <label>
+          <span>Escala horizontal</span>
+          <output id="escala-ancho-valor">0.50</output>
+          <input id="escala-ancho" type="range" min="0.3" max="1.0" step="0.05" value="0.5" />
+        </label>
+
+        <label>
+          <span>N° estaciones</span>
+          <output id="cantidad-valor">80</output>
+          <input id="cantidad" type="range" min="20" max="180" step="10" value="80" />
+        </label>
+      </section>
+
+      <section class="mapping">
+        <h3>Reglas de representación</h3>
+        <div class="map-row"><b>latitud / longitud</b><span>→</span><em>posición X/Z</em></div>
+        <div class="map-row"><b>bicicletas disponibles</b><span>→</span><em>altura llena</em></div>
+        <div class="map-row"><b>capacidad total</b><span>→</span><em>altura total</em></div>
+        <div class="map-row"><b>% ocupación</b><span>→</span><em>ancho</em></div>
+      </section>
+
+      <section class="inspector">
+        <h3>Estación seleccionada</h3>
+        <p id="estacion-nombre">Haz click sobre un módulo.</p>
+        <div class="metric-grid">
+          <div><span>Bicicletas</span><strong id="m-bicis">—</strong></div>
+          <div><span>Libres</span><strong id="m-libres">—</strong></div>
+          <div><span>Capacidad</span><strong id="m-capacidad">—</strong></div>
+          <div><span>Ocupación</span><strong id="m-ocupacion">—</strong></div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button id="actualizar">Actualizar ahora</button>
+        <button id="pausar" class="secondary">Pausar auto</button>
+      </div>
+    </aside>
+  </main>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
