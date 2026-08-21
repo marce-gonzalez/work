@@ -17,7 +17,7 @@ const parametros = {
   intervaloCrecimiento: 120,
   radioBase: 0.2,
   reduccionRadio: 0.72,
-  radioMinimo: 0.045,
+  radioMinimo: 0.018,
 };
 
 // 02 — Escena Three.js reutilizada del ejercicio original.
@@ -333,12 +333,14 @@ const controles = {
   crecimiento: document.querySelector("#crecimiento"),
   variacion: document.querySelector("#variacion"),
   cantidadOrganismos: document.querySelector("#cantidadOrganismos"),
+  radioBase: document.querySelector("#radioBase"),
   semilla: document.querySelector("#semilla"),
 };
 const valoresVisibles = {
   crecimiento: document.querySelector("#crecimiento-valor"),
   variacion: document.querySelector("#variacion-valor"),
   cantidadOrganismos: document.querySelector("#cantidadOrganismos-valor"),
+  radioBase: document.querySelector("#radioBase-valor"),
 };
 
 let organismo;
@@ -364,6 +366,7 @@ Object.entries(controles).forEach(([nombre, control]) => {
         : parametros[nombre].toFixed(2);
     }
     if (nombre === "cantidadOrganismos") organismo.reset();
+    if (nombre === "radioBase") organismo.updateGeometry();
   });
 });
 
