@@ -5,8 +5,9 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 const parametros = {
   crecimiento: 0.45,
   variacion: 0.35,
-  color: 0.65,
+  cantidadOrganismos: 5,
   semilla: 42,
+  radioNube: 5.5,
   longitudBase: 0.72,
   probabilidadRamificacion: 0.24,
   distanciaMinima: 0.52,
@@ -46,6 +47,13 @@ class Organism {
     this.material = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.94 });
     this.lines = new THREE.LineSegments(this.geometry, this.material);
     scene.add(this.lines);
+
+    this.rootGeometry = new THREE.BufferGeometry();
+    this.rootPoints = new THREE.Points(
+      this.rootGeometry,
+      new THREE.PointsMaterial({ color: 0x049dbf, size: 0.16, sizeAttenuation: true })
+    );
+    scene.add(this.rootPoints);
     this.reset();
   }
 
@@ -58,8 +66,18 @@ class Organism {
     this.running = false;
     this.lastGrowthTime = 0;
 
-    const root = this.createNode(new THREE.Vector3(0, 0, 0), 0);
-    this.activeBranches.push({ node: root, direction: new THREE.Vector3(0, 1, 0), id: 1 });
+    const rootPositions = this.createSeedCloud();
+    rootPositions.forEach((position, index) => {
+      const root = this.createNode(position, 0);
+      this.activeBranches.push({
+        node: root,
+        direction: new THREE.Vector3(0, 1, 0),
+        rootPosition: position.clone(),
+        branchLevel: 0,
+        id: index + 1,
+      });
+    });
+    this.updateRootPoints(rootPositions);
     this.updateGeometry();
     updateStats();
   }
@@ -99,8 +117,15 @@ class Organism {
     if (this.checkCollision(position, tip.node)) return null;
 
     const node = this.createNode(position, this.generation);
-    this.createBranch(tip.node, node, this.generation);
-    return { node, direction, id: node.id * 2 + (isBranch ? 1 : 0) };
+    const branchLevel = tip.branchLevel + (isBranch ? 1 : 0);
+    this.createBranch(tip.node, node, branchLevel);
+    return {
+      node,
+      direction,
+      rootPosition: tip.rootPosition,
+      branchLevel,
+      id: node.id * 2 + (isBranch ? 1 : 0),
+    };
   }
 
   createNode(position, generation) {
@@ -112,12 +137,12 @@ class Organism {
     return node;
   }
 
-  createBranch(start, end, generation) {
-    this.branches.push({ start, end, color: this.colorForGeneration(generation) });
+  createBranch(start, end, branchLevel) {
+    this.branches.push({ start, end, color: this.colorForBranchLevel(branchLevel) });
   }
 
   calculateDirection(tip, isBranch, index) {
-    const radial = tip.node.position.clone();
+    const radial = tip.node.position.clone().sub(tip.rootPosition);
     radial.y *= 0.35;
     if (radial.lengthSq() < 0.01) {
       const angle = this.random(tip.id, this.generation, index + 2) * Math.PI * 2;
@@ -182,10 +207,37 @@ class Organism {
     this.geometry.computeBoundingSphere();
   }
 
-  colorForGeneration(generation) {
-    const progress = Math.min(generation / 35, 1);
-    const hue = THREE.MathUtils.lerp(0.12, 0.46, progress * parametros.color);
-    return new THREE.Color().setHSL(hue, 0.28 + parametros.color * 0.42, 0.72 - progress * 0.22);
+  colorForBranchLevel(branchLevel) {
+    const palette = [0x260101, 0x590202, 0xd91a1a, 0xf26a1b, 0x049dbf];
+    return new THREE.Color(palette[Math.min(branchLevel, palette.length - 1)]);
+  }
+
+  createSeedCloud() {
+    const positions = [];
+    const minimumDistance = 1.8;
+
+    for (let index = 0; index < parametros.cantidadOrganismos; index++) {
+      let candidate = new THREE.Vector3();
+      for (let attempt = 0; attempt < 30; attempt++) {
+        const radius = Math.cbrt(this.random(index + 1, attempt, 70)) * parametros.radioNube;
+        const angle = this.random(index + 1, attempt, 71) * Math.PI * 2;
+        candidate.set(
+          Math.cos(angle) * radius,
+          this.random(index + 1, attempt, 72) * parametros.radioNube * 0.65,
+          Math.sin(angle) * radius
+        );
+        if (positions.every((position) => position.distanceTo(candidate) >= minimumDistance)) break;
+      }
+      positions.push(candidate.clone());
+    }
+    return positions;
+  }
+
+  updateRootPoints(positions) {
+    const coordinates = new Float32Array(positions.length * 3);
+    positions.forEach((position, index) => position.toArray(coordinates, index * 3));
+    this.rootGeometry.setAttribute("position", new THREE.BufferAttribute(coordinates, 3));
+    this.rootGeometry.computeBoundingSphere();
   }
 
   cellCoordinates(position) {
@@ -216,13 +268,13 @@ class Organism {
 const controles = {
   crecimiento: document.querySelector("#crecimiento"),
   variacion: document.querySelector("#variacion"),
-  color: document.querySelector("#color"),
+  cantidadOrganismos: document.querySelector("#cantidadOrganismos"),
   semilla: document.querySelector("#semilla"),
 };
 const valoresVisibles = {
   crecimiento: document.querySelector("#crecimiento-valor"),
   variacion: document.querySelector("#variacion-valor"),
-  color: document.querySelector("#color-valor"),
+  cantidadOrganismos: document.querySelector("#cantidadOrganismos-valor"),
 };
 
 let organismo;
@@ -239,10 +291,15 @@ updateStats();
 
 Object.entries(controles).forEach(([nombre, control]) => {
   control.addEventListener("input", (event) => {
-    parametros[nombre] = nombre === "semilla"
+    parametros[nombre] = nombre === "semilla" || nombre === "cantidadOrganismos"
       ? Math.max(1, Number.parseInt(event.target.value, 10) || 1)
       : Number.parseFloat(event.target.value);
-    if (valoresVisibles[nombre]) valoresVisibles[nombre].value = parametros[nombre].toFixed(2);
+    if (valoresVisibles[nombre]) {
+      valoresVisibles[nombre].value = nombre === "cantidadOrganismos"
+        ? parametros[nombre]
+        : parametros[nombre].toFixed(2);
+    }
+    if (nombre === "cantidadOrganismos") organismo.reset();
   });
 });
 
