@@ -1,181 +1,26 @@
-# Campo de Datos 01 — v0.2
+# LAB 03 — Atmósfera en datos
 
-Starter para **Clase 03 — Computación Avanzada**  
-Magíster en Ciencias del Diseño · Universidad Adolfo Ibáñez
+Visualización Three.js de observaciones recientes de la Red de Estaciones Meteorológicas Automáticas de la Dirección Meteorológica de Chile (DMC).
 
-## Idea central
+## Fuente y alcance
 
-> **Los datos no tienen una forma visual predeterminada. Diseñar una representación significa decidir qué información conservar, cómo relacionarla y cómo hacerla visible.**
+El servicio oficial `getDatosRecientesRedEma` entrega datos minutarios de las últimas 12 horas y requiere usuario y token personal de Servicios Climáticos DMC. La aplicación toma el último registro útil de cada estación y consulta cada cinco minutos.
 
-Este starter representa el estado de un sistema real de bicicletas compartidas utilizando datos públicos en formato **GBFS**.
+La fuente DMC usada aquí incluye temperatura, humedad, viento, presión y precipitación, pero **no concentraciones de MP2.5 o MP10**. El color es un proxy didáctico de dispersión calculado con viento y humedad; no es un índice sanitario ni una medición de contaminación. Para material particulado real hay que integrar una fuente de calidad del aire, por ejemplo SINCA, como segunda capa.
 
-La aplicación intenta consultar el feed en tiempo real de **Citi Bike (Nueva York)** y utiliza un dataset local de respaldo si la fuente no está disponible.
+## Mapeo visual
 
-## Fuente
+- latitud / longitud → posición X/Z;
+- humedad relativa → altura;
+- velocidad y dirección del viento → ancho y flecha;
+- proxy de dispersión → color rojo–verde.
 
-Citi Bike publica datos públicos de estado del sistema mediante GBFS.
+## Uso
 
-El starter utiliza:
+1. Sirve esta carpeta con Live Server.
+2. Ingresa el correo y token de la API DMC.
+3. Presiona **Actualizar ahora**.
 
-```text
-station_information
-```
+Las credenciales quedan en `localStorage` y no se escriben en el repositorio. Para publicar se recomienda un proxy de servidor que no exponga el token y resuelva posibles restricciones CORS. Sin credenciales o ante un error se carga `assets/data/ambiental-respaldo.json`, cuyos valores son ficticios.
 
-para:
-
-- nombre de la estación;
-- latitud;
-- longitud;
-- capacidad.
-
-Y:
-
-```text
-station_status
-```
-
-para:
-
-- bicicletas disponibles;
-- anclajes disponibles;
-- estado actual.
-
-## Arquitectura conceptual
-
-```text
-FUENTE
-GBFS
-
-↓
-
-FETCH
-
-↓
-
-JSON
-
-↓
-
-SELECCIONAR + COMBINAR
-
-↓
-
-REGLAS DE REPRESENTACIÓN
-
-↓
-
-GEOMETRÍA
-```
-
-## Reglas incluidas
-
-### 1 — Posición
-
-```text
-latitud + longitud → posición X/Z
-```
-
-La distribución conserva aproximadamente la relación espacial entre estaciones.
-
-### 2 — Altura total
-
-```text
-capacidad de la estación → altura total
-```
-
-El contenedor oscuro representa el tamaño del sistema disponible en esa estación.
-
-### 3 — Volumen lleno
-
-```text
-bicicletas disponibles / capacidad → volumen ocupado
-```
-
-La geometría clara muestra cuánta capacidad está actualmente ocupada por bicicletas.
-
-### 4 — Ancho
-
-```text
-porcentaje de ocupación → ancho
-```
-
-Una estación con mayor ocupación también aumenta ligeramente su presencia horizontal.
-
-## Dataset local de respaldo
-
-```text
-assets/data/movilidad-respaldo.json
-```
-
-contiene datos sintéticos de estaciones.
-
-Este archivo permite:
-
-- completar LAB03 sin depender de internet;
-- comprender primero la estructura de los datos;
-- comparar una fuente estática con una fuente viva.
-
-Los datos de respaldo **no representan estaciones reales**.
-
-## Cómo ejecutarlo
-
-Usa VS Code + Live Server.
-
-1. Abre la carpeta.
-2. Click derecho sobre `index.html`.
-3. `Open with Live Server`.
-4. Abre Developer Tools → Console si la escena no carga.
-
-## Archivos
-
-```text
-campo-de-datos-01-v0.2/
-├── index.html
-├── styles.css
-├── main.js
-├── README.md
-└── assets/
-    └── data/
-        └── movilidad-respaldo.json
-```
-
-## Qué mirar primero en `main.js`
-
-```text
-01 — CONFIGURACIÓN
-02 — ESCENA
-03 — DATOS: FETCH + FALLBACK
-04 — REGLAS: INPUT → RELACIÓN → OUTPUT
-05 — INTERFAZ + INSPECTOR
-06 — POLLING RESPONSABLE
-07 — ANIMACIÓN + RESPONSIVE
-```
-
-Para LAB03 el corazón conceptual está en:
-
-```js
-combinarFeedsGBFS()
-```
-
-y:
-
-```js
-crearModuloEstacion()
-```
-
-La primera convierte fuentes distintas en una estructura común.
-
-La segunda traduce esa información en geometría.
-
-## Experimento clave
-
-Selecciona una estación en la escena y lee sus datos:
-
-```text
-bicicletas
-anclajes libres
-capacidad
-ocupación
-```
-
-Luego identifica qué propiedad visual representa cada dato.
+Documentación oficial: https://climatologia.meteochile.gob.cl/application/documentacion/getDocumento/1
