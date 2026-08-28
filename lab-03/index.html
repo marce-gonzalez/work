@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>El camino de las cenizas · NASA FIRMS</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="./styles.css?v=20260828-8">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="./styles.css?v=20260828-9">
 </head>
 <body><main class="app-shell">
   <section class="map-shell"><header class="project-header"><p class="eyebrow">COMPUTACIÓN AVANZADA · LAB 03</p><h1>El camino de las cenizas</h1><p>Detecciones de fuego y anomalías térmicas de NASA FIRMS se cruzan con la dirección de los vientos para trazar el recorrido de las cenizas.</p></header><div id="map" aria-label="Mapa de focos activos NASA FIRMS"></div><canvas id="ash-canvas" aria-hidden="true"></canvas><div class="legend"><span><i class="particle high-particle"></i>Confianza alta</span><span><i class="particle nominal-particle"></i>Nominal</span><span><i class="particle low-particle"></i>Baja</span></div></section>
@@ -16,4 +16,4 @@
     <section class="mapping"><h3>Reglas de representación</h3><div><b>lat / lon</b><span>→</span><em>centro fijo</em></div><div><b>confianza</b><span>→</span><em>radio + densidad</em></div><div><b>FRP (MW)</b><span>→</span><em>emisión</em></div><div><b>viento GFS 10 m</b><span>→</span><em>trayectoria</em></div></section>
     <div class="actions"><button id="refresh">Actualizar datos</button><button id="pause" class="secondary">Pausar auto</button></div><p class="source-link">Focos: NASA FIRMS. Viento superficial: NOAA GFS vía Open-Meteo. Referencia visual: earth.nullschool.net.</p>
   </aside>
-</main><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="./main.js?v=20260828-8"></script></body></html>
+</main><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="./main.js?v=20260828-9"></script></body></html>

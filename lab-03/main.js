@@ -176,16 +176,17 @@ function emitParticle() {
   if (!windSources.length || particles.length >= MAX_PARTICLES) return;
   const source = windSources[Math.floor(Math.random() * windSources.length)];
   const point = map.latLngToContainerPoint([source.lat, source.lon]);
-  const spread = source.confidenceLevel === "high" ? 10 : source.confidenceLevel === "nominal" ? 7 : 4;
+  const spread = source.confidenceLevel === "high" ? 16 : source.confidenceLevel === "nominal" ? 12 : 8;
   const direction = (source.windDirection + 180) * Math.PI / 180;
   const colors = PARTICLE_COLORS[source.confidenceLevel] || PARTICLE_COLORS.nominal;
   const life = 100 + Math.random() * 150;
   particles.push({
     x: point.x + (Math.random() - .5) * spread, y: point.y + (Math.random() - .5) * spread,
-    vx: Math.sin(direction) * (.18 + source.windSpeed * .095),
-    vy: -Math.cos(direction) * (.18 + source.windSpeed * .095),
-    life, maxLife: life, size: .7 + Math.random() * 2,
+    vx: Math.sin(direction) * (.06 + source.windSpeed * .032),
+    vy: -Math.cos(direction) * (.06 + source.windSpeed * .032),
+    life: life * 1.45, maxLife: life * 1.45, size: 1 + Math.random() * 2.6,
     color: colors[Math.floor(Math.random() * colors.length)], turbulence: Math.random() * Math.PI * 2,
+    drift: .12 + Math.random() * .22,
   });
 }
 let previousFrame = performance.now();
@@ -195,18 +196,18 @@ function animateAsh(now) {
   const width = map.getContainer().clientWidth, height = map.getContainer().clientHeight;
   ashContext.clearRect(0, 0, width, height);
   drawFireClusters();
-  if (automatic) for (let i = 0; i < Math.min(6, windSources.length); i++) emitParticle();
+  if (automatic) for (let i = 0; i < Math.min(4, windSources.length); i++) emitParticle();
   ashContext.globalCompositeOperation = "lighter";
   particles = particles.filter((particle) => {
     particle.life -= dt;
     if (particle.life <= 0 || particle.x < -30 || particle.x > width + 30 || particle.y < -30 || particle.y > height + 30) return false;
     const previousX = particle.x, previousY = particle.y;
-    particle.turbulence += .045 * dt;
-    particle.x += (particle.vx + Math.sin(particle.turbulence) * .12) * dt;
-    particle.y += (particle.vy + Math.cos(particle.turbulence * .8) * .08) * dt;
-    const alpha = Math.min(1, particle.life / 35) * Math.min(1, (particle.maxLife - particle.life) / 20);
-    ashContext.globalAlpha = alpha * .78;
-    ashContext.strokeStyle = particle.color; ashContext.lineWidth = particle.size; ashContext.lineCap = "round";
+    particle.turbulence += .025 * dt;
+    particle.x += (particle.vx + Math.sin(particle.turbulence) * particle.drift) * dt;
+    particle.y += (particle.vy + Math.cos(particle.turbulence * .67) * particle.drift * .72) * dt;
+    const alpha = Math.min(1, particle.life / 70) * Math.min(1, (particle.maxLife - particle.life) / 42);
+    ashContext.globalAlpha = alpha * .42;
+    ashContext.strokeStyle = particle.color; ashContext.lineWidth = particle.size * 1.6; ashContext.lineCap = "round";
     ashContext.beginPath(); ashContext.moveTo(previousX, previousY); ashContext.lineTo(particle.x, particle.y); ashContext.stroke();
     return true;
   });
