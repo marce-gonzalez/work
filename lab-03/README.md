@@ -23,10 +23,12 @@ La `MAP_KEY` viajará a NASA a través de ese Worker. Para un proyecto público 
 ## Datos y representación
 
 - `latitude`, `longitude` → posición;
-- `confidence` → color;
-- `frp` → tamaño del marcador;
-- `daynight` → contorno nocturno;
+- `confidence` → densidad y saturación del humo;
+- `frp` → tamaño y expansión de la nube;
+- `daynight` → halo violeta;
 - `acq_date`, `acq_time` → momento de adquisición UTC.
+
+El mapa base se representa como cartografía lineal blanca sobre negro. Los focos usan la textura original `assets/images/smoke-oil.png`, generada a partir de las referencias visuales del ejercicio. Para mantener una animación fluida se dibujan las 650 detecciones filtradas con mayor FRP; las métricas conservan el total completo.
 
 Productos incluidos: VIIRS NOAA-21 NRT, VIIRS NOAA-20 NRT, VIIRS Suomi-NPP NRT y MODIS NRT. NRT significa *Near Real-Time*. Una detección es una anomalía térmica y no confirma por sí sola un incendio en terreno.
 
