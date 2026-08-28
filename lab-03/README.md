@@ -1,26 +1,35 @@
-# LAB 03 — Atmósfera en datos
+# LAB 03 — Focos de incendio
 
-Visualización Three.js de observaciones recientes de la Red de Estaciones Meteorológicas Automáticas de la Dirección Meteorológica de Chile (DMC).
-
-## Fuente y alcance
-
-El servicio oficial `getDatosRecientesRedEma` entrega datos minutarios de las últimas 12 horas y requiere usuario y token personal de Servicios Climáticos DMC. La aplicación toma el último registro útil de cada estación y consulta cada cinco minutos.
-
-La fuente DMC usada aquí incluye temperatura, humedad, viento, presión y precipitación, pero **no concentraciones de MP2.5 o MP10**. El color es un proxy didáctico de dispersión calculado con viento y humedad; no es un índice sanitario ni una medición de contaminación. Para material particulado real hay que integrar una fuente de calidad del aire, por ejemplo SINCA, como segunda capa.
+Mapa interactivo de detecciones satelitales para Argentina y Chile. Consume el mismo endpoint de focos que usa [Patagonia Fires](https://www.patagoniafires.org/) y representa datos derivados de NASA FIRMS.
 
 ## Mapeo visual
 
-- latitud / longitud → posición X/Z;
-- humedad relativa → altura;
-- velocidad y dirección del viento → ancho y flecha;
-- proxy de dispersión → color rojo–verde.
+- latitud / longitud → posición en el mapa;
+- `severity_score` → tamaño y color;
+- FRP, en MW → potencia radiativa observada;
+- fecha y hora UTC → recencia;
+- `is_night` → filtro de detecciones nocturnas.
+
+Una detección es una anomalía térmica observada por satélite, no la confirmación de un incendio en terreno.
 
 ## Uso
 
-1. Sirve esta carpeta con Live Server.
-2. Ingresa el correo y token de la API DMC.
-3. Presiona **Actualizar ahora**.
+1. Sirve la carpeta con Live Server u otro servidor HTTP.
+2. Elige el período y las severidades.
+3. Mueve el mapa para consultar el área visible o presiona **Actualizar ahora**.
 
-Las credenciales quedan en `localStorage` y no se escriben en el repositorio. Para publicar se recomienda un proxy de servidor que no exponga el token y resuelva posibles restricciones CORS. Sin credenciales o ante un error se carga `assets/data/ambiental-respaldo.json`, cuyos valores son ficticios.
+La aplicación intenta actualizar cada 30 minutos y guarda la última respuesta válida en `localStorage`.
 
-Documentación oficial: https://climatologia.meteochile.gob.cl/application/documentacion/getDocumento/1
+## Restricción CORS
+
+El endpoint `https://www.patagoniafires.org/api/fires` responde JSON públicamente, pero al 28 de agosto de 2026 no envía `Access-Control-Allow-Origin`. Por eso un sitio estático alojado en otro dominio no puede leerlo directamente desde el navegador.
+
+Para activar el modo vivo, despliega un proxy propio que acepte una URL de `www.patagoniafires.org`, consulte desde el servidor y devuelva el JSON con CORS limitado al dominio del proyecto, caché y límite de solicitudes. Luego asigna su dirección a `API_PROXY` al inicio de `main.js`.
+
+Contrato esperado:
+
+```text
+GET https://tu-proxy.example/?url=<URL codificada de Patagonia Fires>
+```
+
+No conviene usar proxies CORS públicos: pueden registrar, modificar o dejar de servir los datos sin aviso.

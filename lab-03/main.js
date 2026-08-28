@@ -1,164 +1,76 @@
-import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-
-const URL_DMC = "https://climatologia.meteochile.gob.cl/application/servicios/getDatosRecientesRedEma";
-const INTERVALO = 300;
-const parametros = { modo: "geografico", escalaAltura: 0.16, escalaAncho: 0.65, cantidad: 30 };
-let estaciones = [], objetos = [], segundos = INTERVALO, automatico = true;
-
+const API_ORIGIN = "https://www.patagoniafires.org";
+// En una página alojada fuera de patagoniafires.org se necesita un proxy CORS.
+// Contrato esperado: `${API_PROXY}?url=${encodeURIComponent(urlPatagonia)}`.
+const API_PROXY = "";
+const REFRESH_SECONDS = 30 * 60;
+const CACHE_KEY = "lab03_patagonia_fires";
+const COLORS = { critical: "#ff3154", high: "#ff7a33", moderate: "#ffc145", low: "#4ecb71" };
+let fires = [], seconds = REFRESH_SECONDS, automatic = true, moveTimer;
 const $ = (selector) => document.querySelector(selector);
-const viewport = $("#viewport");
-const escena = new THREE.Scene();
-escena.background = new THREE.Color(0x081014);
-const camara = new THREE.PerspectiveCamera(42, viewport.clientWidth / viewport.clientHeight, 0.1, 500);
-camara.position.set(25, 50, 35);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(viewport.clientWidth, viewport.clientHeight);
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-viewport.appendChild(renderer.domElement);
-const controles = new OrbitControls(camara, renderer.domElement);
-controles.enableDamping = true;
-controles.target.set(0, 3, 0);
-escena.add(new THREE.HemisphereLight(0xeaf7ff, 0x132027, 2.2));
-const luz = new THREE.DirectionalLight(0xffffff, 2.4);
-luz.position.set(20, 35, 15);
-escena.add(luz);
-const suelo = new THREE.Mesh(new THREE.PlaneGeometry(85, 85), new THREE.MeshStandardMaterial({ color: 0x0b171c, roughness: 1 }));
-suelo.rotation.x = -Math.PI / 2;
-escena.add(suelo, new THREE.GridHelper(70, 35, 0x31505a, 0x172c33));
-const grupo = new THREE.Group();
-escena.add(grupo);
 
-const usuarioInput = $("#dmc-usuario"), tokenInput = $("#dmc-token");
-usuarioInput.value = localStorage.getItem("dmc_usuario") || "";
-tokenInput.value = localStorage.getItem("dmc_token") || "";
+const map = L.map("map", { zoomControl: false, preferCanvas: true }).setView([-32.6949, -64.4842], 5);
+L.control.zoom({ position: "bottomright" }).addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors" }).addTo(map);
+const layer = L.layerGroup().addTo(map);
 
-function numero(valor) {
-  if (valor == null) return null;
-  const match = String(valor).replace(",", ".").match(/-?\d+(?:\.\d+)?/);
-  return match ? Number(match[0]) : null;
+const isoDate = (date) => date.toISOString().slice(0, 10);
+function setInitialDates() {
+  const to = new Date(), from = new Date(to); from.setUTCDate(from.getUTCDate() - 7);
+  $("#date-from").value = isoDate(from); $("#date-to").value = isoDate(to);
 }
-
-function normalizarDMC(json) {
-  return (json.datosEstaciones || []).map(({ estacion, datos = [] }) => {
-    const actual = [...datos].reverse().find((d) => [d.temperatura, d.humedadRelativa, d.fuerzaDelViento].some((v) => numero(v) != null));
-    if (!actual) return null;
-    const vientoKt = numero(actual.fuerzaDelVientoPromedio10Minutos ?? actual.fuerzaDelViento);
-    return {
-      id: estacion.codigoNacional, nombre: estacion.nombreEstacion,
-      lat: numero(estacion.latitud), lon: numero(estacion.longitud),
-      temperatura: numero(actual.temperatura), humedad: numero(actual.humedadRelativa),
-      viento: vientoKt == null ? null : vientoKt * 0.514444,
-      direccion: numero(actual.direccionDelVientoPromedio10Minutos ?? actual.direccionDelViento),
-      momento: actual.momento,
-    };
-  }).filter((e) => e && Number.isFinite(e.lat) && Number.isFinite(e.lon));
+function endpoint() {
+  const b = map.getBounds();
+  const params = new URLSearchParams({ date_from: $("#date-from").value, date_to: $("#date-to").value, min_confidence: "nominal", zoom: map.getZoom().toFixed(1), min_lat: b.getSouth().toFixed(5), max_lat: b.getNorth().toFixed(5), min_lng: b.getWest().toFixed(5), max_lng: b.getEast().toFixed(5) });
+  return `${API_ORIGIN}/api/fires?${params}`;
 }
+function requestUrl() { const url = endpoint(); return API_PROXY ? `${API_PROXY}?url=${encodeURIComponent(url)}` : url; }
 
-async function cargarDatosVivos() {
-  estado("conectando");
-  const usuario = usuarioInput.value.trim(), token = tokenInput.value.trim();
-  if (!usuario || !token) return cargarRespaldo("Ingresa usuario y token DMC para activar datos vivos.");
-  localStorage.setItem("dmc_usuario", usuario);
-  localStorage.setItem("dmc_token", token);
+async function loadFires() {
+  setStatus("loading", "conectando…");
   try {
-    const url = new URL(URL_DMC);
-    url.searchParams.set("usuario", usuario); url.searchParams.set("token", token);
-    const respuesta = await fetch(url, { cache: "no-store" });
-    if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-    const json = await respuesta.json();
-    estaciones = normalizarDMC(json);
-    if (!estaciones.length) throw new Error(json.status || "respuesta sin estaciones");
-    estado("vivo");
-    $("#fuente-label").textContent = "DMC · Red EMA";
-    $("#actualizacion-label").textContent = json.fechaCreacion || "recién consultado";
-    $("#aviso-datos").textContent = "Observaciones meteorológicas reales. No son mediciones de MP2.5/MP10.";
-    generar();
+    const response = await fetch(requestUrl(), { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!Array.isArray(data.fires)) throw new Error("respuesta sin focos");
+    fires = data.fires;
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ fires, updatedAt: data.updated_at || new Date().toISOString() }));
+    setStatus("live", "en vivo");
+    $("#source-label").textContent = "Patagonia Fires · NASA FIRMS";
+    $("#updated-label").textContent = formatDate(data.updated_at || new Date().toISOString());
+    $("#data-notice").textContent = `${fires.length.toLocaleString("es-CL")} detecciones recibidas para el área visible.`;
   } catch (error) {
-    console.warn("Consulta DMC fallida", error);
-    await cargarRespaldo(`DMC no disponible: ${error.message}`);
+    const cached = readCache(); fires = cached?.fires || [];
+    setStatus("cached", fires.length ? "caché local" : "sin conexión");
+    $("#source-label").textContent = fires.length ? "Última captura local" : "Patagonia Fires";
+    $("#updated-label").textContent = cached ? formatDate(cached.updatedAt) : "—";
+    $("#data-notice").textContent = API_PROXY ? `No se pudo consultar el proxy: ${error.message}.` : "El origen bloquea consultas entre dominios (CORS). Configura API_PROXY en main.js; se muestra la última captura disponible.";
   }
+  render(); seconds = REFRESH_SECONDS;
 }
-
-async function cargarRespaldo(mensaje) {
-  estaciones = (await (await fetch("./assets/data/ambiental-respaldo.json")).json()).estaciones;
-  estado("respaldo");
-  $("#fuente-label").textContent = "Dataset didáctico local";
-  $("#actualizacion-label").textContent = "sin conexión viva";
-  $("#aviso-datos").textContent = mensaje;
-  generar();
+function readCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; } }
+function activeSeverities() { return new Set([...document.querySelectorAll('.check input[type="checkbox"][value]:checked')].map((input) => input.value)); }
+function filteredFires() { const active = activeSeverities(), night = $("#night-only").checked; return fires.filter((f) => active.has(f.severity) && (!night || f.is_night)); }
+function render() {
+  layer.clearLayers(); const visible = filteredFires(); const counts = { critical: 0, high: 0, moderate: 0, low: 0 };
+  fires.forEach((f) => { if (counts[f.severity] != null) counts[f.severity]++; });
+  Object.entries(counts).forEach(([severity, count]) => $(`#count-${severity}`).textContent = count.toLocaleString("es-CL"));
+  const canvas = L.canvas();
+  visible.forEach((f) => L.circleMarker([f.lat, f.lng], { renderer: canvas, radius: Math.max(4, Math.min(13, (Number(f.severity_score) || 0) / 8)), color: "#fff", weight: .6, opacity: .55, fillColor: COLORS[f.severity] || COLORS.low, fillOpacity: f.is_night ? .95 : .72 }).bindPopup(popup(f)).addTo(layer));
+  $("#visible-total").textContent = visible.length.toLocaleString("es-CL");
+  $("#night-total").textContent = visible.filter((f) => f.is_night).length.toLocaleString("es-CL");
+  const maxFrp = Math.max(...visible.map((f) => Number(f.frp) || 0)); $("#max-frp").textContent = visible.length ? `${maxFrp.toFixed(1)} MW` : "—";
 }
-
-// Proxy visual didáctico. No equivale a concentración ni a un índice sanitario.
-function dispersion(e) {
-  return THREE.MathUtils.clamp((e.viento ?? 0) / 8 * 0.75 + (100 - (e.humedad ?? 70)) / 100 * 0.25, 0, 1);
+function popup(f) {
+  const time = String(f.acq_time ?? 0).padStart(4, "0"), observed = `${f.acq_date || "—"} · ${time.slice(0, 2)}:${time.slice(2)} UTC`;
+  const frp = Number.isFinite(Number(f.frp)) ? `${Number(f.frp).toFixed(1)} MW` : "—";
+  return `<article class="popup"><span class="badge ${f.severity}">${f.severity.toUpperCase()}</span><h3>Foco satelital</h3><dl><dt>Severidad</dt><dd>${f.severity_score ?? "—"}/100</dd><dt>FRP</dt><dd>${frp}</dd><dt>Confianza</dt><dd>${f.confidence_pct ?? f.confidence ?? "—"}${f.confidence_pct != null ? "%" : ""}</dd><dt>Observado</dt><dd>${observed}</dd><dt>Satélite</dt><dd>${f.satellite || "—"}</dd><dt>Coordenadas</dt><dd>${f.lat.toFixed(4)}, ${f.lng.toFixed(4)}</dd></dl></article>`;
 }
-function distribuir(lista) {
-  if (parametros.modo === "dispersion") {
-    const columnas = Math.ceil(Math.sqrt(lista.length));
-    return [...lista].sort((a, b) => dispersion(a) - dispersion(b)).map((e, i) => ({ ...e, x: (i % columnas - columnas / 2) * 2.3, z: (Math.floor(i / columnas) - columnas / 2) * 2.3 }));
-  }
-  const latC = (Math.min(...lista.map((e) => e.lat)) + Math.max(...lista.map((e) => e.lat))) / 2;
-  const lonC = (Math.min(...lista.map((e) => e.lon)) + Math.max(...lista.map((e) => e.lon))) / 2;
-  return lista.map((e) => ({ ...e, x: (e.lon - lonC) * 1.15, z: -(e.lat - latC) * 1.15 }));
-}
-function generar() {
-  limpiar();
-  distribuir(estaciones.slice(0, parametros.cantidad)).forEach((e) => {
-    const indice = dispersion(e), altura = Math.max(0.5, (e.humedad ?? 50) * parametros.escalaAltura);
-    const ancho = (0.65 + (e.viento ?? 0) * 0.09) * parametros.escalaAncho;
-    const color = new THREE.Color().setHSL(0.02 + indice * 0.43, 0.72, 0.52);
-    const malla = new THREE.Mesh(new THREE.CylinderGeometry(ancho * 0.72, ancho, altura, 10), new THREE.MeshStandardMaterial({ color, roughness: 0.7 }));
-    malla.position.set(e.x, altura / 2, e.z); malla.userData.estacion = e;
-    grupo.add(malla); objetos.push(malla);
-    if (e.direccion != null && e.viento) {
-      const rad = THREE.MathUtils.degToRad(e.direccion);
-      grupo.add(new THREE.ArrowHelper(new THREE.Vector3(Math.sin(rad), 0, Math.cos(rad)), new THREE.Vector3(e.x, altura + 0.15, e.z), Math.min(4, 0.5 + e.viento * 0.25), 0xd8eef5, 0.35, 0.18));
-    }
-  });
-}
-function limpiar() {
-  objetos = [];
-  while (grupo.children.length) {
-    const objeto = grupo.children[0];
-    objeto.traverse((h) => { h.geometry?.dispose(); Array.isArray(h.material) ? h.material.forEach((m) => m.dispose()) : h.material?.dispose(); });
-    grupo.remove(objeto);
-  }
-}
-
-const raycaster = new THREE.Raycaster(), puntero = new THREE.Vector2();
-renderer.domElement.addEventListener("pointerdown", (event) => {
-  const rect = renderer.domElement.getBoundingClientRect();
-  puntero.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
-  raycaster.setFromCamera(puntero, camara);
-  const hit = raycaster.intersectObjects(objetos)[0];
-  if (hit) mostrar(hit.object.userData.estacion);
-});
-const valor = (v, unidad) => v == null ? "—" : `${v.toFixed(1)} ${unidad}`;
-function mostrar(e) {
-  $("#estacion-nombre").textContent = e.nombre;
-  $("#m-temperatura").textContent = valor(e.temperatura, "°C");
-  $("#m-humedad").textContent = valor(e.humedad, "%");
-  $("#m-viento").textContent = valor(e.viento, "m/s");
-  $("#m-dispersion").textContent = `${Math.round(dispersion(e) * 100)} / 100`;
-}
-function slider(id, salida, clave, decimales) {
-  $(`#${id}`).addEventListener("input", (event) => { parametros[clave] = Number(event.target.value); $(`#${salida}`).value = parametros[clave].toFixed(decimales); generar(); });
-}
-$("#modo-distribucion").addEventListener("change", (e) => { parametros.modo = e.target.value; generar(); });
-slider("escala-altura", "escala-altura-valor", "escalaAltura", 2);
-slider("escala-ancho", "escala-ancho-valor", "escalaAncho", 2);
-slider("cantidad", "cantidad-valor", "cantidad", 0);
-$("#actualizar").addEventListener("click", () => { segundos = INTERVALO; cargarDatosVivos(); });
-$("#pausar").addEventListener("click", (event) => { automatico = !automatico; event.target.textContent = automatico ? "Pausar auto" : "Reanudar auto"; });
-function estado(tipo) { $("#estado-label").innerHTML = tipo === "vivo" ? '<i class="status-dot"></i> conectado' : tipo === "respaldo" ? "respaldo local" : "conectando…"; }
-setInterval(() => {
-  if (!automatico) return $("#cuenta-regresiva").textContent = "pausada";
-  segundos--;
-  $("#cuenta-regresiva").textContent = `${Math.floor(segundos / 60)}:${String(segundos % 60).padStart(2, "0")}`;
-  if (segundos <= 0) { segundos = INTERVALO; cargarDatosVivos(); }
-}, 1000);
-function animar() { requestAnimationFrame(animar); controles.update(); renderer.render(escena, camara); }
-window.addEventListener("resize", () => { camara.aspect = viewport.clientWidth / viewport.clientHeight; camara.updateProjectionMatrix(); renderer.setSize(viewport.clientWidth, viewport.clientHeight); });
-cargarDatosVivos(); animar();
+function formatDate(value) { return new Intl.DateTimeFormat("es-CL", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); }
+function setStatus(type, text) { $("#status-label").innerHTML = `<i class="status-dot ${type}"></i>${text}`; }
+document.querySelectorAll(".check input").forEach((input) => input.addEventListener("change", render));
+$("#refresh").addEventListener("click", loadFires);
+$("#pause").addEventListener("click", (event) => { automatic = !automatic; event.currentTarget.textContent = automatic ? "Pausar auto" : "Reanudar auto"; });
+[$("#date-from"), $("#date-to")].forEach((input) => input.addEventListener("change", loadFires));
+map.on("moveend", () => { clearTimeout(moveTimer); moveTimer = setTimeout(loadFires, 500); });
+setInterval(() => { if (!automatic) return $("#countdown-label").textContent = "pausada"; seconds--; $("#countdown-label").textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`; if (seconds <= 0) loadFires(); }, 1000);
+setInitialDates(); loadFires();
