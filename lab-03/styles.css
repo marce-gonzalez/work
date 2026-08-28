@@ -36,7 +36,7 @@ select { margin-bottom:10px; }
 .actions { display:flex; gap:8px; }.actions button { flex:1; padding:11px; border:1px solid var(--orange); border-radius:5px; background:var(--orange); color:#160b05; font-weight:800; cursor:pointer; }.actions .secondary { color:var(--text); background:transparent; border-color:var(--line); }
 .legend { position:absolute; z-index:500; left:28px; bottom:24px; display:flex; gap:12px; padding:9px 12px; background:#0b100de6; border:1px solid var(--line); border-radius:5px; font-size:10px; }.legend span { display:flex; align-items:center; gap:5px; }
 .leaflet-container { background:#000; }
-.line-map-tiles { filter:grayscale(1) contrast(2.1) brightness(1.32); opacity:.8; }
+.line-map-tiles { filter:grayscale(1) invert(1) contrast(2.45) brightness(.68); opacity:.82; mix-blend-mode:screen; }
 .smoke-marker-wrap { background:none!important; border:0!important; overflow:visible!important; }
 .smoke-marker { position:relative; width:var(--size); height:var(--size); transform:rotate(var(--rotation)); filter:saturate(.88) contrast(1.08); }
 .smoke-marker img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }
@@ -49,7 +49,7 @@ select { margin-bottom:10px; }
 @keyframes smoke-breathe { 0%,100%{transform:scale(.46) rotate(-4deg)} 50%{transform:scale(.62) rotate(5deg)} }
 @keyframes smoke-expand { 0%{opacity:0;transform:scale(.26) rotate(-12deg)} 14%{opacity:.64} 72%{opacity:.16} 100%{opacity:0;transform:scale(1.45) rotate(18deg)} }
 @media (prefers-reduced-motion:reduce) { .smoke-core,.smoke-puff { animation:none; }.smoke-core{transform:scale(.62)}.smoke-puff{display:none} }
-.smoke-swatch { width:16px!important; height:16px!important; background:url("./assets/images/smoke-oil.png?v=20260828-2") center/contain no-repeat!important; border-radius:0!important; }
+.smoke-swatch { width:16px!important; height:16px!important; background:url("./assets/images/smoke-oil.png?v=20260828-3") center/contain no-repeat!important; border-radius:0!important; }
 .high-smoke { opacity:1; }.nominal-smoke { opacity:.7; filter:saturate(.55); }.low-smoke { opacity:.45; filter:grayscale(.35); }
 .leaflet-popup-content-wrapper,.leaflet-popup-tip { background:#101713; color:var(--text); }.leaflet-popup-content { margin:15px; }.popup h3 { margin:8px 0; color:var(--text); font-size:15px; }.badge { padding:3px 6px; border-radius:3px; color:#fff; font-size:9px; font-weight:800; }.popup dl { display:grid; grid-template-columns:90px 1fr; margin:0; font-size:11px; }.popup dt,.popup dd { margin:0; padding:4px 0; }.popup dt { color:var(--muted); }.popup dd { text-align:right; }
 @media (max-width:800px) { .app-shell{grid-template-columns:1fr}.map-shell{min-height:65vh}.controls-panel{max-height:none;border-left:0;border-top:1px solid var(--line)}.project-header{top:18px;left:18px;right:18px}.legend{left:18px;bottom:18px;flex-wrap:wrap}.project-header>p:last-child{font-size:12px} }

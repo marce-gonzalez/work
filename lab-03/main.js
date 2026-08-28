@@ -14,9 +14,9 @@ localStorage.removeItem("dmc_token");
 
 const map = L.map("map", { zoomControl: false, preferCanvas: true }).setView([-32.6949, -64.4842], 5);
 L.control.zoom({ position: "bottomright" }).addTo(map);
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
-  subdomains: "abcd", maxZoom: 20,
-  attribution: "&copy; OpenStreetMap contributors &copy; CARTO · Data NASA FIRMS",
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: "&copy; OpenStreetMap contributors · Data NASA FIRMS",
   className: "line-map-tiles",
 }).addTo(map);
 const fireLayer = L.layerGroup().addTo(map);
@@ -99,7 +99,7 @@ function render() {
     const icon = L.divIcon({
       className: "smoke-marker-wrap",
       iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size * .28],
-      html: `<div class="smoke-marker ${fire.confidenceLevel} ${fire.isNight ? "is-night" : ""}" style="--size:${size}px;--delay:${delay}s;--rotation:${rotation}deg"><img class="smoke-core" src="./assets/images/smoke-oil.png?v=20260828-2" alt=""><img class="smoke-puff puff-a" src="./assets/images/smoke-oil.png?v=20260828-2" alt=""><img class="smoke-puff puff-b" src="./assets/images/smoke-oil.png?v=20260828-2" alt=""></div>`,
+      html: `<div class="smoke-marker ${fire.confidenceLevel} ${fire.isNight ? "is-night" : ""}" style="--size:${size}px;--delay:${delay}s;--rotation:${rotation}deg"><img class="smoke-core" src="./assets/images/smoke-oil.png?v=20260828-3" alt=""><img class="smoke-puff puff-a" src="./assets/images/smoke-oil.png?v=20260828-3" alt=""><img class="smoke-puff puff-b" src="./assets/images/smoke-oil.png?v=20260828-3" alt=""></div>`,
     });
     L.marker([fire.lat, fire.lon], { icon, riseOnHover: true }).bindPopup(popup(fire)).addTo(fireLayer);
   });
