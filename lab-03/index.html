@@ -1,24 +1,19 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Focos de incendio · Argentina y Chile</title>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Focos activos · NASA FIRMS</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><link rel="stylesheet" href="./styles.css">
 </head>
 <body><main class="app-shell">
-  <section class="map-shell"><header class="project-header"><p class="eyebrow">COMPUTACIÓN AVANZADA · LAB 03</p><h1>Focos de incendio</h1><p>Detecciones satelitales en Argentina y Chile. Cada punto es una anomalía térmica, no un incendio confirmado.</p></header><div id="map"></div><div class="legend"><span><i class="critical"></i>Crítico</span><span><i class="high"></i>Alto</span><span><i class="moderate"></i>Moderado</span><span><i class="low"></i>Bajo</span></div></section>
-  <aside class="controls-panel"><div class="panel-header"><p class="eyebrow">FUENTE + REPRESENTACIÓN</p><h2>NASA FIRMS</h2></div>
-    <section class="status-card"><div class="status-row"><span>Fuente</span><strong id="source-label">Patagonia Fires</strong></div><div class="status-row"><span>Estado</span><strong id="status-label">conectando…</strong></div><div class="status-row"><span>Actualización</span><strong id="updated-label">—</strong></div><div class="status-row"><span>Próxima consulta</span><strong id="countdown-label">30:00</strong></div><p id="data-notice" class="data-notice"></p></section>
-    <section class="control-group"><h3>Período</h3><div class="date-grid"><label><span>Desde</span><input id="date-from" type="date"></label><label><span>Hasta</span><input id="date-to" type="date"></label></div></section>
-    <section class="control-group"><h3>Severidad</h3>
-      <label class="check"><input type="checkbox" value="critical" checked><i class="critical"></i><span>Crítico · 70–100</span><b id="count-critical">0</b></label>
-      <label class="check"><input type="checkbox" value="high" checked><i class="high"></i><span>Alto · 50–69</span><b id="count-high">0</b></label>
-      <label class="check"><input type="checkbox" value="moderate"><i class="moderate"></i><span>Moderado · 30–49</span><b id="count-moderate">0</b></label>
-      <label class="check"><input type="checkbox" value="low"><i class="low"></i><span>Bajo · 0–29</span><b id="count-low">0</b></label>
-      <label class="check simple"><input id="night-only" type="checkbox"><span>Solo detecciones nocturnas</span></label>
-    </section>
+  <section class="map-shell"><header class="project-header"><p class="eyebrow">COMPUTACIÓN AVANZADA · LAB 03</p><h1>Focos activos</h1><p>Detecciones de fuego y anomalías térmicas de NASA FIRMS, consultadas para el área visible.</p></header><div id="map" aria-label="Mapa de focos activos NASA FIRMS"></div><div class="legend"><span><i class="critical"></i>Confianza alta</span><span><i class="high"></i>Nominal</span><span><i class="low"></i>Baja</span><span><i class="night"></i>Nocturno</span></div></section>
+  <aside class="controls-panel"><div class="panel-header"><p class="eyebrow">FUENTE OFICIAL</p><h2>NASA FIRMS</h2></div>
+    <section class="credentials"><h3>Acceso a la API</h3><label><span>MAP_KEY</span><input id="map-key" type="password" autocomplete="off" placeholder="Clave gratuita de 32 caracteres"></label><p>Se guarda sólo en este navegador. <a href="https://firms.modaps.eosdis.nasa.gov/api/map_key/" target="_blank" rel="noreferrer">Solicitar MAP_KEY gratuita ↗</a></p></section>
+    <section class="status-card"><div class="status-row"><span>Fuente</span><strong id="source-label">NASA FIRMS Area API</strong></div><div class="status-row"><span>Estado</span><strong id="status-label">esperando clave</strong></div><div class="status-row"><span>Actualización</span><strong id="updated-label">—</strong></div><div class="status-row"><span>Próxima consulta</span><strong id="countdown-label">15:00</strong></div><p id="data-notice" class="data-notice">Ingresa tu MAP_KEY para consultar datos NRT.</p></section>
+    <section class="control-group"><h3>Consulta</h3><label><span>Producto satelital</span><select id="source"><option value="VIIRS_NOAA21_NRT">VIIRS NOAA-21 NRT</option><option value="VIIRS_NOAA20_NRT">VIIRS NOAA-20 NRT</option><option value="VIIRS_SNPP_NRT">VIIRS Suomi-NPP NRT</option><option value="MODIS_NRT">MODIS NRT</option></select></label><label><span>Últimos días</span><select id="days"><option value="1">1 día</option><option value="2">2 días</option><option value="3">3 días</option><option value="4">4 días</option><option value="5">5 días</option></select></label></section>
+    <section class="control-group"><h3>Confianza</h3><label class="check"><input type="checkbox" value="high" checked><i class="critical"></i><span>Alta</span><b id="count-high">0</b></label><label class="check"><input type="checkbox" value="nominal" checked><i class="high"></i><span>Nominal</span><b id="count-nominal">0</b></label><label class="check"><input type="checkbox" value="low"><i class="low"></i><span>Baja</span><b id="count-low">0</b></label><label class="check simple"><input id="night-only" type="checkbox"><span>Solo detecciones nocturnas</span></label></section>
     <section class="summary"><div><span>Visibles</span><strong id="visible-total">0</strong></div><div><span>FRP máx.</span><strong id="max-frp">—</strong></div><div><span>Nocturnos</span><strong id="night-total">0</strong></div></section>
-    <section class="mapping"><h3>Reglas de representación</h3><div><b>latitud / longitud</b><span>→</span><em>posición</em></div><div><b>severity_score</b><span>→</span><em>tamaño + color</em></div><div><b>FRP (MW)</b><span>→</span><em>intensidad</em></div><div><b>fecha / hora UTC</b><span>→</span><em>recencia</em></div></section>
-    <div class="actions"><button id="refresh">Actualizar ahora</button><button id="pause" class="secondary">Pausar auto</button></div><p class="source-link">Fuente: <a href="https://www.patagoniafires.org/" target="_blank" rel="noreferrer">patagoniafires.org</a>, basada en NASA FIRMS.</p>
+    <section class="mapping"><h3>Reglas de representación</h3><div><b>lat / lon</b><span>→</span><em>posición</em></div><div><b>confianza</b><span>→</span><em>color</em></div><div><b>FRP (MW)</b><span>→</span><em>tamaño</em></div><div><b>daynight</b><span>→</span><em>contorno</em></div></section>
+    <div class="actions"><button id="refresh">Consultar FIRMS</button><button id="pause" class="secondary">Pausar auto</button></div><p class="source-link">Una detección satelital es una anomalía térmica; no confirma por sí sola un incendio en terreno.</p>
   </aside>
 </main><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="./main.js"></script></body></html>
