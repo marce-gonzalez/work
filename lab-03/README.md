@@ -28,7 +28,7 @@ La `MAP_KEY` viajará a NASA a través de ese Worker. Para un proyecto público 
 - `daynight` → halo violeta;
 - `acq_date`, `acq_time` → momento de adquisición UTC.
 
-El mapa base se representa como cartografía lineal blanca sobre negro. Los focos usan la textura original `assets/images/smoke-oil.png`, generada a partir de las referencias visuales del ejercicio. Para mantener una animación fluida se dibujan las 650 detecciones filtradas con mayor FRP; las métricas conservan el total completo.
+El mapa base se representa como cartografía lineal blanca sobre negro. Los focos usan la textura original `assets/images/smoke-oil.png`, generada a partir de las referencias visuales del ejercicio. La confianza escala el radio (alta 1,38×; nominal 1×; baja 0,72×): el centro se representa en carmín y naranja, mientras la expansión vira hacia violetas y azules. Para mantener una animación fluida se dibujan las 650 detecciones filtradas con mayor FRP; las métricas conservan el total completo.
 
 Productos incluidos: VIIRS NOAA-21 NRT, VIIRS NOAA-20 NRT, VIIRS Suomi-NPP NRT y MODIS NRT. NRT significa *Near Real-Time*. Una detección es una anomalía térmica y no confirma por sí sola un incendio en terreno.
 
