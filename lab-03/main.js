@@ -95,13 +95,13 @@ function render() {
   rendered.forEach((fire, index) => {
     const confidenceScale = { high: 1.38, nominal: 1, low: .72 }[fire.confidenceLevel] || 1;
     const baseSize = Math.max(34, Math.min(92, 34 + Math.sqrt(Math.max(0, fire.frp || 0)) * 2.2));
-    const size = Math.round(baseSize * confidenceScale);
+    const size = Math.round(baseSize * confidenceScale * 5);
     const delay = -Number(((index * .37) % 7).toFixed(2));
     const rotation = (index * 47) % 360;
     const icon = L.divIcon({
       className: "smoke-marker-wrap",
       iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size * .28],
-      html: `<div class="smoke-marker ${fire.confidenceLevel} ${fire.isNight ? "is-night" : ""}" style="--size:${size}px;--delay:${delay}s;--rotation:${rotation}deg"><span class="ember-core"></span><img class="smoke-core" src="./assets/images/smoke-oil.png?v=20260828-4" alt=""><img class="smoke-puff puff-a" src="./assets/images/smoke-oil.png?v=20260828-4" alt=""><img class="smoke-puff puff-b" src="./assets/images/smoke-oil.png?v=20260828-4" alt=""></div>`,
+      html: `<div class="smoke-marker ${fire.confidenceLevel} ${fire.isNight ? "is-night" : ""}" style="--size:${size}px;--delay:${delay}s;--rotation:${rotation}deg"><img class="smoke-core" src="./assets/images/smoke-oil.png?v=20260828-5" alt=""><img class="smoke-puff puff-a" src="./assets/images/smoke-oil.png?v=20260828-5" alt=""><img class="smoke-puff puff-b" src="./assets/images/smoke-oil.png?v=20260828-5" alt=""></div>`,
     });
     L.marker([fire.lat, fire.lon], { icon, riseOnHover: true }).bindPopup(popup(fire)).addTo(fireLayer);
   });
