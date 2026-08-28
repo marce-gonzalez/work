@@ -1,6 +1,6 @@
 const FIRMS_API = "https://firms.modaps.eosdis.nasa.gov/api/area/csv";
 // Dirección opcional del Worker incluido en firms-proxy-worker.js (sin barra final).
-const FIRMS_PROXY = "https://marce-gonzalez.github.io/work/lab-03/";
+const FIRMS_PROXY = "";
 const REFRESH_SECONDS = 15 * 60;
 const KEY_STORAGE = "lab03_firms_map_key";
 const COLORS = { high: "#ff3154", nominal: "#ff8a38", low: "#57ce78" };
@@ -14,9 +14,12 @@ localStorage.removeItem("dmc_token");
 
 const map = L.map("map", { zoomControl: false, preferCanvas: true }).setView([-32.6949, -64.4842], 5);
 L.control.zoom({ position: "bottomright" }).addTo(map);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "&copy; OpenStreetMap contributors · Data NASA FIRMS" }).addTo(map);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png", {
+  subdomains: "abcd", maxZoom: 20,
+  attribution: "&copy; OpenStreetMap contributors &copy; CARTO · Data NASA FIRMS",
+  className: "line-map-tiles",
+}).addTo(map);
 const fireLayer = L.layerGroup().addTo(map);
-const canvas = L.canvas({ padding: .5 });
 $("#map-key").value = localStorage.getItem(KEY_STORAGE) || "";
 
 function queryUrl() {
@@ -88,14 +91,23 @@ function render() {
   const visible = filteredFires(), counts = { high: 0, nominal: 0, low: 0 };
   fires.forEach((f) => counts[f.confidenceLevel]++);
   Object.entries(counts).forEach(([level, count]) => $(`#count-${level}`).textContent = count.toLocaleString("es-CL"));
-  visible.forEach((fire) => {
-    const radius = Math.max(4, Math.min(15, 4 + Math.sqrt(Math.max(0, fire.frp || 0)) * .45));
-    L.circleMarker([fire.lat, fire.lon], { renderer: canvas, radius, color: fire.isNight ? "#d8ccff" : "#fff", weight: fire.isNight ? 1.8 : .6, opacity: .75, fillColor: COLORS[fire.confidenceLevel], fillOpacity: .8 }).bindPopup(popup(fire)).addTo(fireLayer);
+  const rendered = [...visible].sort((a, b) => (b.frp || 0) - (a.frp || 0)).slice(0, 650);
+  rendered.forEach((fire, index) => {
+    const size = Math.round(Math.max(34, Math.min(92, 34 + Math.sqrt(Math.max(0, fire.frp || 0)) * 2.2)));
+    const delay = -Number(((index * .37) % 7).toFixed(2));
+    const rotation = (index * 47) % 360;
+    const icon = L.divIcon({
+      className: "smoke-marker-wrap",
+      iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size * .28],
+      html: `<div class="smoke-marker ${fire.confidenceLevel} ${fire.isNight ? "is-night" : ""}" style="--size:${size}px;--delay:${delay}s;--rotation:${rotation}deg"><img class="smoke-core" src="./assets/images/smoke-oil.png?v=20260828-2" alt=""><img class="smoke-puff puff-a" src="./assets/images/smoke-oil.png?v=20260828-2" alt=""><img class="smoke-puff puff-b" src="./assets/images/smoke-oil.png?v=20260828-2" alt=""></div>`,
+    });
+    L.marker([fire.lat, fire.lon], { icon, riseOnHover: true }).bindPopup(popup(fire)).addTo(fireLayer);
   });
   $("#visible-total").textContent = visible.length.toLocaleString("es-CL");
   $("#night-total").textContent = visible.filter((f) => f.isNight).length.toLocaleString("es-CL");
   const maxFrp = Math.max(...visible.map((f) => Number.isFinite(f.frp) ? f.frp : 0));
   $("#max-frp").textContent = visible.length ? `${maxFrp.toFixed(1)} MW` : "—";
+  if (visible.length > rendered.length) $("#data-notice").textContent = `${visible.length.toLocaleString("es-CL")} detecciones; se animan las ${rendered.length} con mayor FRP para mantener el mapa fluido.`;
 }
 function popup(f) {
   const time = String(f.acq_time || "0").padStart(4, "0");
