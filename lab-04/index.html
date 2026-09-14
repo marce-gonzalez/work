@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema Colectivo</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<main class="app">
+  <header class="encabezado">
+    <p class="eyebrow">COMPUTACIÓN AVANZADA · MCD UAI</p>
+    <h1>Sistema Colectivo</h1>
+    <p class="bajada">Conectar → comunicar → representar → colaborar.</p>
+    <div class="etapa-badge">ETAPA <strong id="etapa-actual">1</strong></div>
+  </header>
+
+  <section class="panel" data-etapa="1">
+    <div class="panel-titulo"><span>01</span><h2>Identidad y conexión</h2></div>
+    <label><span>Tu nombre</span><input id="nombre" type="text" placeholder="Ej: Julián" autocomplete="name"></label>
+    <label><span>Contraseña MQTT</span><input id="contrasena" type="password" placeholder="Escribe la contraseña" autocomplete="off"></label>
+    <button id="boton-conectar">Conectar</button>
+    <div class="estado-conexion"><span id="estado-punto" class="estado-punto"></span><strong id="estado-texto">Desconectado</strong></div>
+    <div class="dato-grid">
+      <div><span>Client ID</span><code id="cliente-id">—</code></div>
+      <div><span>Suscripción</span><code id="topic-suscripcion">—</code></div>
+    </div>
+  </section>
+
+  <section class="panel" data-etapa="1">
+    <div class="panel-titulo"><span>02</span><h2>Mi señal</h2></div>
+    <div class="control-fila">
+      <div><span class="control-label">Intensidad</span><output id="intensidad-salida">50</output></div>
+      <input id="intensidad" type="range" min="0" max="100" value="50" disabled>
+    </div>
+    <p class="nota">Cada cambio publica un mensaje MQTT en formato JSON.</p>
+  </section>
+
+  <section class="panel panel-destacado" data-etapa="1">
+    <div class="panel-titulo"><span>03</span><h2>Último mensaje del sistema</h2></div>
+    <div class="ultimo-valor">
+      <strong id="ultimo-intensidad">—</strong>
+      <span id="ultimo-nombre">Esperando mensajes…</span>
+      <small id="ultimo-hora">—</small>
+    </div>
+    <div class="ultimo-json"><span>Payload recibido</span><pre id="ultimo-json">{ }</pre></div>
+  </section>
+
+  <section class="panel" data-etapa="2">
+    <div class="panel-titulo"><span>04</span><h2>Del dato a una representación</h2></div>
+    <div class="mapping"><b>intensidad</b><span>→</span><em>escala del cubo</em></div>
+    <div id="escena-simple" class="escena"></div>
+    <p class="nota">El dato no trae una forma: la relación entre dato y geometría la definimos nosotros.</p>
+  </section>
+
+  <section class="panel" data-etapa="3">
+    <div class="panel-titulo"><span>05</span><h2>Tres variables, tres decisiones</h2></div>
+    <div class="control-fila"><div><span class="control-label">Intensidad</span><output id="intensidad-salida-2">50</output></div><input id="intensidad-2" type="range" min="0" max="100" value="50" disabled></div>
+    <div class="control-fila"><div><span class="control-label">Actividad</span><output id="actividad-salida">50</output></div><input id="actividad" type="range" min="0" max="100" value="50" disabled></div>
+    <div class="control-fila"><div><span class="control-label">Variación</span><output id="variacion-salida">50</output></div><input id="variacion" type="range" min="0" max="100" value="50" disabled></div>
+    <div class="mapping mapping-tres">
+      <b>intensidad</b><span>→</span><em>escala</em>
+      <b>actividad</b><span>→</span><em>rotación</em>
+      <b>variación</b><span>→</span><em>color</em>
+    </div>
+    <p class="nota">Las reglas están agrupadas y comentadas en <code>main.js</code> para intervenirlas durante la clase.</p>
+  </section>
+
+  <section class="panel" data-etapa="4">
+    <div class="panel-titulo"><span>06</span><h2>Sistema colectivo</h2></div>
+    <div class="metricas">
+      <div><span>Nodos</span><strong id="m-nodos">0</strong></div>
+      <div><span>Promedio</span><strong id="m-promedio">—</strong></div>
+      <div><span>Mínimo</span><strong id="m-minimo">—</strong></div>
+      <div><span>Máximo</span><strong id="m-maximo">—</strong></div>
+    </div>
+    <div id="escena-colectiva" class="escena escena-grande"></div>
+    <p class="nota">Cada participante se convierte en un módulo de una composición común. La esfera central responde al promedio colectivo.</p>
+  </section>
+
+  <section class="panel" data-etapa="4">
+    <div class="panel-titulo"><span>07</span><h2>Nodos activos</h2></div>
+    <div class="nodos-cabecera"><span>Nombre</span><span>Int.</span><span>Act.</span><span>Var.</span></div>
+    <div id="nodos-lista" class="nodos-lista"><p class="vacio">Todavía no hay nodos.</p></div>
+  </section>
+
+  <footer><p><strong>Idea central:</strong> input → mensaje → estado → regla → representación.</p></footer>
+</main>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}
+</script>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

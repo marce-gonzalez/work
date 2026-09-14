@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#071613">
+  <meta name="description" content="Interfaz local para observar CO₂ en un cultivo de microalgas mediante Arduino UNO.">
+  <title>Umbral vivo — cultivo de microalgas</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="Umbral vivo, inicio">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span>UMBRAL VIVO</span>
+    </a>
+    <p class="eyebrow">Cultivo 01 · observación local</p>
+  </header>
+
+  <main id="contenido">
+    <section class="hero" aria-labelledby="titulo">
+      <div>
+        <p class="kicker">Atmósfera del cultivo / CO₂</p>
+        <h1 id="titulo">Respirar también<br>es una forma de medir.</h1>
+      </div>
+      <p class="intro">Una lectura del aire alrededor del cultivo, recibida directamente desde tu Arduino. La bomba se controla en el dispositivo, no desde esta página.</p>
+    </section>
+
+    <section class="connection-panel" aria-labelledby="fuente-title">
+      <div class="panel-heading">
+        <div>
+          <p class="section-index">01 / FUENTE</p>
+          <h2 id="fuente-title">Conexión de datos</h2>
+        </div>
+        <div class="connection-state" role="status" aria-live="polite">
+          <span id="status-dot" class="status-dot"></span>
+          <span id="estado">Sin conectar</span>
+        </div>
+      </div>
+
+      <div class="source-switch" role="group" aria-label="Fuente de datos">
+        <button class="source-button is-active" type="button" data-mode="serial" aria-pressed="true">USB directo</button>
+        <button class="source-button" type="button" data-mode="file" aria-pressed="false">Archivo local</button>
+        <button class="source-button demo-source" type="button" data-mode="demo" aria-pressed="false">Demostración</button>
+      </div>
+
+      <div id="source-description" class="source-description">
+        <p id="mode-help">Conecta el Arduino UNO a este equipo. Chrome o Edge solicitarán permiso para usar el puerto.</p>
+        <span id="simulated-badge" class="simulated-badge" hidden>DATOS SIMULADOS</span>
+      </div>
+
+      <div class="actions">
+        <button id="conectar" class="button button-primary" type="button">
+          <span>Conectar Arduino</span><span aria-hidden="true">↗</span>
+        </button>
+        <button id="desconectar" class="button button-secondary" type="button" disabled>Desconectar</button>
+        <button id="exportar" class="button button-text" type="button">Exportar historial JSON</button>
+      </div>
+      <p id="feedback" class="feedback" aria-live="polite">Ninguna fuente está leyendo datos.</p>
+
+      <form id="threshold-form" class="threshold-form" novalidate>
+        <div class="threshold-heading">
+          <div>
+            <p class="section-index">CONTROL AUTÓNOMO</p>
+            <h3>Umbrales del Arduino</h3>
+          </div>
+          <span>Histéresis mínima: 20 ppm</span>
+        </div>
+        <div class="threshold-fields">
+          <label>
+            <span>Encender bomba desde</span>
+            <span class="input-with-unit"><input id="threshold-on" name="threshold-on" type="number" inputmode="numeric" min="400" max="5000" step="1" value="700" required><small>ppm</small></span>
+          </label>
+          <label>
+            <span>Apagar bomba bajo</span>
+            <span class="input-with-unit"><input id="threshold-off" name="threshold-off" type="number" inputmode="numeric" min="400" max="5000" step="1" value="650" required><small>ppm</small></span>
+          </label>
+          <button id="save-thresholds" class="button button-save" type="submit" disabled>Guardar umbrales en Arduino</button>
+        </div>
+        <p id="config-feedback" class="config-feedback" role="status" aria-live="polite">Conecta el Arduino por USB directo para modificar sus umbrales.</p>
+      </form>
+    </section>
+
+    <section class="reading-grid" aria-labelledby="lectura-title">
+      <div class="live-reading">
+        <p class="section-index">02 / AHORA</p>
+        <h2 id="lectura-title" class="sr-only">Lectura actual</h2>
+        <div class="value-row">
+          <span id="co2-value" class="co2-value">—</span>
+          <span class="unit">ppm<br><small>CO₂</small></span>
+        </div>
+        <p id="data-state" class="data-state">SIN DATOS</p>
+        <p id="received-time" class="received-time">Aún no se reciben mediciones</p>
+
+        <dl class="metrics">
+          <div>
+            <dt>Sensor</dt>
+            <dd id="sensor-status">Sin datos</dd>
+          </div>
+          <div>
+            <dt>Orden de bomba</dt>
+            <dd id="pump-command">Sin datos</dd>
+            <span class="metric-note">Orden eléctrica, no caudal medido</span>
+          </div>
+          <div>
+            <dt>Modo de control</dt>
+            <dd id="control-status">Sin datos</dd>
+          </div>
+        </dl>
+      </div>
+
+      <figure class="organism-card">
+        <canvas id="organism" aria-label="Interpretación visual generativa de la lectura válida de CO₂"></canvas>
+        <div class="visual-coefficient" aria-live="polite">
+          <span>Coeficiente fotosintético visual</span>
+          <strong id="photo-coefficient">—</strong>
+        </div>
+        <figcaption><strong>Actividad generativa</strong> · Los puntos grises aumentan en cantidad y velocidad con el CO₂; la curva verde se desplaza según un coeficiente proporcional normalizado. Es una interpretación artística, no una medición fotosintética ni una simulación validada de crecimiento o carbono capturado.</figcaption>
+      </figure>
+    </section>
+
+    <section class="history-section" aria-labelledby="historial-title">
+      <div class="panel-heading">
+        <div>
+          <p class="section-index">03 / MEMORIA</p>
+          <h2 id="historial-title">Últimos 10 minutos</h2>
+        </div>
+        <p id="history-count" class="history-count">0 mediciones</p>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart" role="img" aria-label="Gráfico del historial de CO₂ de los últimos diez minutos"></canvas>
+        <p id="chart-empty" class="chart-empty">El historial aparecerá cuando llegue una lectura válida.</p>
+      </div>
+      <div class="legend" aria-hidden="true"><span></span> CO₂ recibido <i></i> corte de conexión</div>
+    </section>
+
+    <section class="notes" aria-labelledby="notas-title">
+      <p class="section-index">04 / CONTEXTO</p>
+      <h2 id="notas-title">Lo que esta pantalla puede —y no puede— decir.</h2>
+      <div class="notes-grid">
+        <p>La fecha del gráfico corresponde a la recepción en este computador. La animación puede interpolar entre lecturas, pero el historial nunca inventa mediciones.</p>
+        <p>Cerrar o desconectar esta página <strong>no detiene el control local del Arduino</strong>. Si necesitas detener el sistema, actúa sobre el montaje siguiendo su procedimiento seguro.</p>
+        <p>En GitHub Pages, cada visitante solo puede autorizar un Arduino conectado a su propio equipo. Esta página no transmite tu Arduino a visitantes remotos.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>UMBRAL VIVO</span><span>Interfaz experimental · 2026</span></footer>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
