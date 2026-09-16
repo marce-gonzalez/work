@@ -164,6 +164,10 @@ Abre `http://localhost:8000`. El modo inicial es **USB directo** y no abre ning�
 
 El botón «Exportar historial JSON» descarga explícitamente las muestras válidas recibidas en esta sesión. Nada se envía a un servidor. El formulario de umbrales solo se habilita con USB directo y no muestra “guardado” hasta recibir un `ack` aceptado. Cerrar o desconectar la página no detiene el control que ejecuta Arduino.
 
+La visualización incorpora un volumen ajustable entre 1 y 10 litros y un indicador de «Oxígeno producido» expresado en mL O₂ equivalentes por hora. Es un **proxy visual**, calculado como `volumen × coeficiente fotosintético × CO₂/1000 × 2`; no es una medición ni una estimación biológica validada. Una tasa real exigiría, como mínimo, calibrar biomasa, iluminación, temperatura, flujo de gas y absorción de CO₂. El slider solo modifica esta interpretación visual y no cambia el firmware ni el control de la bomba.
+
+Dentro de la circunferencia generativa se dibuja una partícula morada por cada ppm de una lectura válida —por ejemplo, 810 partículas para 810 ppm— junto a células verdes y partículas blancas derivadas. Cada nueva secuencia reorganiza gradualmente el campo. Cuando el CO₂ alcanza el umbral de encendido informado por Arduino, aparecen pequeños puntos grises intermitentes repartidos dentro de la circunferencia y aumenta la actividad visual; esto representa la orden de aireación, no confirma caudal ni funcionamiento mecánico. La pestaña Demostración es la fuente seleccionada inicialmente, pero permanece detenida hasta que la persona pulsa «Iniciar demostración».
+
 ## 8. Publicar después en GitHub Pages
 
 1. Construye tu interfaz con el texto de `PROMPT_CODEX.md` y el adaptador.

@@ -24,7 +24,7 @@
         <p class="kicker">Atmósfera del cultivo / CO₂</p>
         <h1 id="titulo">Respirar también<br>es una forma de medir.</h1>
       </div>
-      <p class="intro">Una lectura del aire alrededor del cultivo, recibida directamente desde tu Arduino. La bomba se controla en el dispositivo, no desde esta página.</p>
+      <p class="intro">Simulación y monitoreo para cultivos de microalgas, como dispositivos de limpieza del aire y fijación de carbono. A través de un sensor de CO₂ conectado a una placa Arduino, se realizan lecturas de la atmósfera del cultivo y se estiman valores como coeficiente fotosintético y producción de oxígeno.</p>
     </section>
 
     <section class="connection-panel" aria-labelledby="fuente-title">
@@ -40,24 +40,24 @@
       </div>
 
       <div class="source-switch" role="group" aria-label="Fuente de datos">
-        <button class="source-button is-active" type="button" data-mode="serial" aria-pressed="true">USB directo</button>
+        <button class="source-button demo-source is-active" type="button" data-mode="demo" aria-pressed="true">Demostración</button>
+        <button class="source-button" type="button" data-mode="serial" aria-pressed="false">USB directo</button>
         <button class="source-button" type="button" data-mode="file" aria-pressed="false">Archivo local</button>
-        <button class="source-button demo-source" type="button" data-mode="demo" aria-pressed="false">Demostración</button>
       </div>
 
       <div id="source-description" class="source-description">
-        <p id="mode-help">Conecta el Arduino UNO a este equipo. Chrome o Edge solicitarán permiso para usar el puerto.</p>
-        <span id="simulated-badge" class="simulated-badge" hidden>DATOS SIMULADOS</span>
+        <p id="mode-help">Genera una serie ficticia aislada para recorrer la interfaz sin hardware. Nunca se activa por un fallo real.</p>
+        <span id="simulated-badge" class="simulated-badge">DATOS SIMULADOS</span>
       </div>
 
       <div class="actions">
         <button id="conectar" class="button button-primary" type="button">
-          <span>Conectar Arduino</span><span aria-hidden="true">↗</span>
+          <span>Iniciar demostración</span><span aria-hidden="true">↗</span>
         </button>
         <button id="desconectar" class="button button-secondary" type="button" disabled>Desconectar</button>
         <button id="exportar" class="button button-text" type="button">Exportar historial JSON</button>
       </div>
-      <p id="feedback" class="feedback" aria-live="polite">Ninguna fuente está leyendo datos.</p>
+      <p id="feedback" class="feedback" aria-live="polite">Demostración desactivada. Los datos simulados permanecen separados de las lecturas reales.</p>
 
       <form id="threshold-form" class="threshold-form" novalidate>
         <div class="threshold-heading">
@@ -78,45 +78,51 @@
           </label>
           <button id="save-thresholds" class="button button-save" type="submit" disabled>Guardar umbrales en Arduino</button>
         </div>
-        <p id="config-feedback" class="config-feedback" role="status" aria-live="polite">Conecta el Arduino por USB directo para modificar sus umbrales.</p>
+        <p id="config-feedback" class="config-feedback" role="status" aria-live="polite">Los umbrales solo se modifican mediante USB directo.</p>
       </form>
     </section>
 
-    <section class="reading-grid" aria-labelledby="lectura-title">
-      <div class="live-reading">
-        <p class="section-index">02 / AHORA</p>
-        <h2 id="lectura-title" class="sr-only">Lectura actual</h2>
-        <div class="value-row">
-          <span id="co2-value" class="co2-value">—</span>
-          <span class="unit">ppm<br><small>CO₂</small></span>
-        </div>
-        <p id="data-state" class="data-state">SIN DATOS</p>
-        <p id="received-time" class="received-time">Aún no se reciben mediciones</p>
-
-        <dl class="metrics">
-          <div>
-            <dt>Sensor</dt>
-            <dd id="sensor-status">Sin datos</dd>
-          </div>
-          <div>
-            <dt>Orden de bomba</dt>
-            <dd id="pump-command">Sin datos</dd>
-            <span class="metric-note">Orden eléctrica, no caudal medido</span>
-          </div>
-          <div>
-            <dt>Modo de control</dt>
-            <dd id="control-status">Sin datos</dd>
-          </div>
-        </dl>
-      </div>
-
+    <section class="culture-section" aria-labelledby="lectura-title">
       <figure class="organism-card">
-        <canvas id="organism" aria-label="Interpretación visual generativa de la lectura válida de CO₂"></canvas>
-        <div class="visual-coefficient" aria-live="polite">
-          <span>Coeficiente fotosintético visual</span>
-          <strong id="photo-coefficient">—</strong>
+        <canvas id="organism" aria-label="Visualización generativa de células de microalgas, partículas de CO₂ y oxígeno equivalente"></canvas>
+
+        <div class="visual-dashboard">
+          <p class="section-index">02 / CULTIVO EN MOVIMIENTO</p>
+          <h2 id="lectura-title">Atmósfera<br>del cultivo</h2>
+          <p id="data-state" class="data-state">SIN DATOS</p>
+          <p id="received-time" class="received-time">Aún no se reciben mediciones</p>
+
+          <dl class="visual-variables">
+            <div class="variable variable-primary">
+              <dt>CO₂</dt>
+              <dd><span id="co2-value">—</span> <small>ppm</small></dd>
+            </div>
+            <div class="variable">
+              <dt>Coeficiente fotosintético</dt>
+              <dd><span id="photo-coefficient">—</span> <small>0–1</small></dd>
+            </div>
+            <div class="variable">
+              <dt>Oxígeno producido*</dt>
+              <dd><span id="oxygen-value">—</span> <small>mL O₂ eq./h</small></dd>
+            </div>
+            <div class="variable volume-variable">
+              <dt><label for="culture-volume">Volumen de cultivo</label></dt>
+              <dd><output id="volume-value" for="culture-volume">5,0 L</output></dd>
+              <input id="culture-volume" type="range" min="1" max="10" step="0.5" value="5" aria-describedby="volume-range">
+              <span id="volume-range" class="range-labels"><i>1 L</i><i>10 L</i></span>
+            </div>
+          </dl>
+
+          <p class="estimate-note">*Estimación visual equivalente: volumen × coeficiente × CO₂/1000 × 2. No es una medición de producción. Requiere calibración con biomasa, luz, flujo y absorción real.</p>
         </div>
-        <figcaption><strong>Actividad generativa</strong> · Los puntos grises aumentan en cantidad y velocidad con el CO₂; la curva verde se desplaza según un coeficiente proporcional normalizado. Es una interpretación artística, no una medición fotosintética ni una simulación validada de crecimiento o carbono capturado.</figcaption>
+
+        <dl class="visual-status">
+          <div><dt>Sensor</dt><dd id="sensor-status">Sin datos</dd></div>
+          <div><dt>Orden de bomba</dt><dd id="pump-command">Sin datos</dd><span>Orden eléctrica, no caudal medido</span></div>
+          <div><dt>Control</dt><dd id="control-status">Sin datos</dd></div>
+        </dl>
+
+        <figcaption><strong>Actividad generativa</strong> · Verde: células de microalgas; morado: una partícula por ppm de CO₂ válido; blanco: oxígeno equivalente. Las curvas expresan relaciones visuales, no trayectorias moleculares. Al alcanzar el umbral de encendido aparecen puntos grises intermitentes y se intensifica el movimiento del cultivo.</figcaption>
       </figure>
     </section>
 

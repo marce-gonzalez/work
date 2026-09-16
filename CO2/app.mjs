@@ -10,11 +10,12 @@ const els = {
   value: $('#co2-value'), dataState: $('#data-state'), received: $('#received-time'), sensor: $('#sensor-status'),
   pump: $('#pump-command'), control: $('#control-status'), count: $('#history-count'), empty: $('#chart-empty'),
   chart: $('#chart'), organism: $('#organism'), photoCoefficient: $('#photo-coefficient'),
+  oxygen: $('#oxygen-value'), volume: $('#culture-volume'), volumeValue: $('#volume-value'),
   thresholdForm: $('#threshold-form'), thresholdOn: $('#threshold-on'), thresholdOff: $('#threshold-off'),
   saveThresholds: $('#save-thresholds'), configFeedback: $('#config-feedback')
 };
 
-let mode = 'serial';
+let mode = 'demo';
 let active = false;
 let fileTimer = null;
 let demoTimer = null;
@@ -27,6 +28,10 @@ let thresholdsDirty = false;
 let savingThresholds = false;
 let demoPump = false;
 let serialFresh = false;
+let cultureVolume = 5;
+let currentThresholdOn = 700;
+let targetLayoutSeed = 0;
+let visualLayoutSeed = 0;
 
 const modeText = {
   serial: 'Conecta el Arduino UNO a este equipo. Chrome o Edge solicitarán permiso para usar el puerto.',
@@ -53,6 +58,7 @@ function clearLive(reason, sensorLabel = 'Sin datos') {
   els.sensor.textContent = sensorLabel;
   els.pump.textContent = 'Sin datos';
   els.control.textContent = 'Sin datos';
+  updateDerivedMetrics();
 }
 
 function setConfigFeedback(message, kind = '') {
@@ -92,6 +98,8 @@ function acceptReading(d, source) {
   els.sensor.textContent = statusLabel(d.sensor_status);
   els.pump.textContent = pumpLabel(d.pump_command);
   els.control.textContent = 'Automático';
+  currentThresholdOn = d.threshold_on_ppm;
+  targetLayoutSeed = (d.seq * .61803398875) % 1;
   if (!thresholdsDirty && !savingThresholds) {
     els.thresholdOn.value = d.threshold_on_ppm;
     els.thresholdOff.value = d.threshold_off_ppm;
@@ -103,11 +111,18 @@ function acceptReading(d, source) {
     return;
   }
   latestValid = d.co2_ppm;
+  updateDerivedMetrics();
   els.value.textContent = String(d.co2_ppm);
   els.dataState.textContent = source === 'demo' ? 'SIMULADO · ACTIVO' : 'LECTURA VÁLIDA';
   els.dataState.classList.add('valid');
   els.received.textContent = `Recibido ${new Date(receivedAt).toLocaleTimeString('es-CL')}`;
-  history.push({received_at:new Date(receivedAt).toISOString(), co2_ppm:d.co2_ppm, source, segment});
+  const coefficient = photosyntheticCoefficient(d.co2_ppm);
+  history.push({
+    received_at:new Date(receivedAt).toISOString(), co2_ppm:d.co2_ppm,
+    photosynthetic_coefficient:coefficient,
+    oxygen_equivalent_ml_h:cultureVolume*coefficient*(d.co2_ppm/1000)*2,
+    culture_volume_l:cultureVolume, source, segment
+  });
   trimHistory();
   drawChart();
 }
@@ -342,6 +357,28 @@ els.thresholdForm.addEventListener('submit', saveThresholdConfiguration);
   const error = thresholdInputError(Number(els.thresholdOn.value), Number(els.thresholdOff.value));
   setConfigFeedback(error || 'Valores listos para enviar al Arduino.', error ? 'error' : '');
 }));
+els.volume.addEventListener('input', () => {
+  cultureVolume = Number(els.volume.value);
+  els.volumeValue.textContent = `${cultureVolume.toLocaleString('es-CL', {minimumFractionDigits:1, maximumFractionDigits:1})} L`;
+  updateDerivedMetrics();
+});
+
+function photosyntheticCoefficient(ppm) {
+  return ppm === null ? null : Math.min(1, Math.max(0, (ppm - 400) / (5000 - 400)));
+}
+
+function updateDerivedMetrics() {
+  const coefficient = photosyntheticCoefficient(latestValid);
+  if (coefficient === null) {
+    els.photoCoefficient.textContent = '—';
+    els.oxygen.textContent = '—';
+    return;
+  }
+  // Proxy visual equivalente; ppm ambiental no permite inferir una tasa biológica real por sí solo.
+  const oxygenEquivalent = cultureVolume * coefficient * (latestValid / 1000) * 2;
+  els.photoCoefficient.textContent = coefficient.toFixed(2);
+  els.oxygen.textContent = oxygenEquivalent.toLocaleString('es-CL', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
 
 function setupCanvas(canvas) {
   const rect = canvas.getBoundingClientRect(); const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -371,53 +408,117 @@ function drawChart() {
 }
 
 let visualPpm = 400;
-const particles = Array.from({length:180}, (_,i) => ({
-  angle: (i * 2.399963) % (Math.PI * 2),
-  distance: 0.16 + ((i * 47) % 100) / 120,
-  speed: .55 + ((i * 29) % 70) / 100,
-  size: .7 + (i % 4) * .38
+const fract = (value) => value - Math.floor(value);
+const clusters = [
+  [-.58,-.48,48],[-.22,-.62,70],[.20,-.60,38],[.55,-.45,58],[-.68,-.12,42],
+  [-.32,-.18,65],[.08,-.28,82],[.46,-.08,50],[-.58,.26,62],[-.18,.20,44],
+  [.20,.16,72],[.62,.26,46],[-.40,.56,38],[.02,.58,64],[.43,.54,50],[.02,-.02,34]
+];
+const algaeCells = Array.from({length:980}, (_,i) => ({
+  cluster:(i*7) % clusters.length,
+  angle:fract(i * .6180339) * Math.PI * 2,
+  radius:Math.pow(fract(i * .7548777),.72),
+  size:.4 + Math.pow(fract(i * .438579),1.8) * 2.9,
+  phase:fract(i * .32719) * Math.PI * 2,
+  shade:i % 5
 }));
+const co2Particles = Array.from({length:5000}, (_,i) => ({
+  angle:fract(i * .6180339) * Math.PI * 2,
+  radius:Math.sqrt(fract(i * .7548777)),
+  size:.35 + Math.pow(fract(i * .811),2.2) * 2.8,
+  phase:fract(i * .229) * Math.PI * 2
+}));
+const oxygenParticles = Array.from({length:180}, (_,i) => ({
+  angle:fract(i * .4177) * Math.PI * 2,
+  radius:Math.sqrt(fract(i * .6831)),
+  size:.7 + fract(i * .719) * 3.1, phase:fract(i * .193) * Math.PI * 2
+}));
+
+function particlePosition(p, time, activity, cx, cy, orbRadius, direction=1, layoutSeed=0) {
+  const layoutAngle=layoutSeed*Math.PI*2;
+  const angle=p.angle+layoutAngle*.17+Math.sin(p.phase+layoutAngle)*.09+time*.000035*direction*activity;
+  const radius=p.radius*orbRadius*(.90+Math.sin(p.phase+layoutAngle*1.7)*.07);
+  const sway = 2 + activity * 7;
+  return {
+    x:cx+Math.cos(angle)*radius+Math.sin(time*.00022*direction+p.phase)*sway,
+    y:cy+Math.sin(angle)*radius+Math.cos(time*.00017+p.phase*1.7)*sway
+  };
+}
 
 function animateOrganism(time) {
   const {ctx,w,h}=setupCanvas(els.organism); ctx.clearRect(0,0,w,h);
   const activeVisual=latestValid !== null;
   const target=activeVisual ? latestValid : 400;
   visualPpm += (target-visualPpm)*.025;
-  // Coeficiente gráfico lineal dentro del rango validado del sensor; no es un modelo biológico.
-  const coefficient=activeVisual ? Math.min(1,Math.max(0,(visualPpm-400)/(5000-400))) : 0;
-  const particleCount=activeVisual ? Math.round(24+coefficient*156) : 12;
-  const velocity=activeVisual ? .00016+coefficient*.00082 : .000035;
-  const cx=w/2,cy=h*.46,maxRadius=Math.min(w,h)*.4;
+  let seedDelta=targetLayoutSeed-visualLayoutSeed;
+  if(seedDelta>.5)seedDelta-=1;else if(seedDelta<-.5)seedDelta+=1;
+  visualLayoutSeed=(visualLayoutSeed+seedDelta*.018+1)%1;
+  const coefficient=activeVisual ? photosyntheticCoefficient(visualPpm) : 0;
+  const injecting=activeVisual && visualPpm>=currentThresholdOn;
+  const activity=.32+coefficient*1.4+(injecting ? 1.55 : 0);
+  const co2Count=activeVisual ? Math.min(5000,Math.max(400,Math.round(latestValid))) : 180;
+  const oxygenEquivalent=activeVisual ? cultureVolume*coefficient*(visualPpm/1000)*2 : 0;
+  const oxygenCount=activeVisual ? Math.min(180,Math.round(18+oxygenEquivalent*12)) : 10;
+  const cx=w*(w<800 ? .57 : .66), cy=h*.48, orbRadius=Math.min(h*.39,w*(w<800 ? .43 : .31));
+  const co2Positions=co2Particles.slice(0,co2Count).map(p=>particlePosition(p,time,activity,cx,cy,orbRadius,1,visualLayoutSeed));
+  const oxygenPositions=oxygenParticles.slice(0,oxygenCount).map(p=>particlePosition(p,time,activity,cx,cy,orbRadius,-1,visualLayoutSeed+.23));
 
-  els.photoCoefficient.textContent=activeVisual ? coefficient.toFixed(2) : '—';
+  // Circunferencia central y halo de contención.
+  ctx.beginPath();ctx.arc(cx,cy,orbRadius,0,Math.PI*2);
+  ctx.strokeStyle=activeVisual?'rgba(157,140,255,.62)':'rgba(157,140,255,.20)';ctx.lineWidth=1.15;ctx.shadowColor='#7867ff';ctx.shadowBlur=activeVisual?16:5;ctx.stroke();ctx.shadowBlur=0;
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,orbRadius-1,0,Math.PI*2);ctx.clip();
 
-  // Campo de partículas: solo posiciones animadas, sin crear mediciones intermedias.
-  ctx.fillStyle=activeVisual ? 'rgba(184,193,190,.62)' : 'rgba(137,151,146,.22)';
-  for(let i=0;i<particleCount;i++) {
-    const p=particles[i];
-    const angle=p.angle+time*velocity*p.speed;
-    const drift=Math.sin(time*.00045+p.angle*7)*8;
-    const radius=p.distance*maxRadius+drift;
-    const x=cx+Math.cos(angle)*radius;
-    const y=cy+Math.sin(angle)*radius*.78;
-    ctx.beginPath();ctx.arc(x,y,p.size,0,Math.PI*2);ctx.fill();
+  // Líneas de flujo finas que reorganizan su curvatura con cada nueva lectura.
+  ctx.lineWidth=.42;
+  const linkCount=Math.min(150,Math.max(45,Math.round(co2Count/7)));
+  for(let i=0;i<linkCount;i++) {
+    const a=co2Positions[i%co2Positions.length], b=oxygenPositions[(i*7+3)%oxygenPositions.length];
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    const bend=Math.sin(time*.00025+i+visualLayoutSeed*9)*orbRadius*.12;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);
+    ctx.bezierCurveTo(mx+(b.y-a.y)*.18+bend,a.y-bend,mx-(b.y-a.y)*.14,b.y+bend,b.x,b.y);
+    ctx.strokeStyle=activeVisual?'rgba(139,116,255,.30)':'rgba(112,92,190,.10)';ctx.stroke();
   }
 
-  // La distancia de la curva al centro expresa el coeficiente proporcional.
-  const baseRadius=42+coefficient*maxRadius*.62;
-  ctx.beginPath();
-  const steps=120;
-  for(let i=0;i<=steps;i++) {
-    const angle=(i/steps)*Math.PI*2;
-    const wave=Math.sin(angle*3+time*.0011)*9+Math.sin(angle*7-time*.0007)*4;
-    const radius=baseRadius+wave*(.35+coefficient*.9);
-    const x=cx+Math.cos(angle)*radius;
-    const y=cy+Math.sin(angle)*radius*.78;
-    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  // Cúmulos celulares compactos, irregulares y de tamaños diferentes.
+  const palette=activeVisual?['#4bd65c','#66e56e','#2fb54b','#8bf287','#249a40']:['#315e3c','#386845','#2b5536','#47734d','#294d32'];
+  for(const cell of algaeCells) {
+    const center=clusters[cell.cluster];
+    const reorganize=Math.sin(visualLayoutSeed*Math.PI*2+cell.cluster*1.9)*orbRadius*.035;
+    const clusterX=cx+center[0]*orbRadius+reorganize+Math.sin(time*.00013*(1+cell.cluster*.04)+cell.cluster)*10*activity;
+    const clusterY=cy+center[1]*orbRadius-reorganize*.5+Math.cos(time*.00011+cell.cluster*1.4)*9*activity;
+    const angle=cell.angle+Math.sin(time*.00025+cell.phase+visualLayoutSeed*6)*.28*activity;
+    const breathe=1+Math.sin(time*.00072+cell.phase)*.11*activity;
+    const spread=center[2]*(orbRadius/350);
+    const x=clusterX+Math.cos(angle)*cell.radius*spread*breathe;
+    const y=clusterY+Math.sin(angle)*cell.radius*spread*breathe*.68;
+    ctx.beginPath();ctx.arc(x,y,cell.size*(orbRadius/350)*(1+activity*.13),0,Math.PI*2);
+    ctx.fillStyle=palette[cell.shade];ctx.globalAlpha=activeVisual ? .72 : .27;ctx.fill();
+    ctx.strokeStyle=activeVisual?'rgba(111,255,121,.32)':'rgba(30,68,41,.35)';ctx.lineWidth=.4;ctx.stroke();
   }
-  ctx.closePath();
-  ctx.strokeStyle=activeVisual?'rgba(200,255,77,.92)':'rgba(126,151,137,.22)';
-  ctx.lineWidth=activeVisual?2:1;ctx.shadowColor=activeVisual?'rgba(200,255,77,.45)':'transparent';ctx.shadowBlur=activeVisual?12:0;ctx.stroke();ctx.shadowBlur=0;
+  ctx.globalAlpha=1;
+
+  // CO₂ morado: una partícula por ppm válido. El conteo sigue la lectura, no la interpolación gráfica.
+  co2Positions.forEach((p,i)=>{ctx.beginPath();ctx.arc(p.x,p.y,co2Particles[i].size*(orbRadius/350),0,Math.PI*2);ctx.fillStyle=activeVisual?'rgba(154,121,255,.76)':'rgba(103,85,141,.28)';ctx.fill();});
+  oxygenPositions.forEach((p,i)=>{ctx.beginPath();ctx.arc(p.x,p.y,oxygenParticles[i].size,0,Math.PI*2);ctx.fillStyle=activeVisual?'rgba(255,255,255,.96)':'rgba(220,230,225,.3)';ctx.shadowColor='#ffffff';ctx.shadowBlur=activeVisual?7:1;ctx.fill();});
+  ctx.shadowBlur=0;
+
+  // Aireación abstracta: puntos grises pequeños que titilan en posiciones repartidas.
+  if(injecting) {
+    for(let i=0;i<320;i++) {
+      const angle=fract(i*.6180339)*Math.PI*2;
+      const radius=Math.sqrt(fract(i*.7548777))*orbRadius*.96;
+      const x=cx+Math.cos(angle)*radius;
+      const y=cy+Math.sin(angle)*radius;
+      const blink=fract(time*.00022*(1+(i%7)*.08)+fract(i*.391));
+      if(blink<.42) continue;
+      const alpha=Math.sin((blink-.42)/.58*Math.PI)*(.18+(i%5)*.07);
+      const size=.35+fract(i*.734)*1.45;
+      ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);
+      ctx.fillStyle=`rgba(175,180,178,${alpha})`;ctx.fill();
+    }
+  }
+  ctx.restore();
   requestAnimationFrame(animateOrganism);
 }
 
