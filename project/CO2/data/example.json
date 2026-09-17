@@ -1,1 +1,0 @@
-{"schema_version":2,"type":"telemetry","seq":42,"uptime_ms":86000,"co2_ppm":720,"sensor_status":"ok","pump_command":"on","control_mode":"automatic","control_enabled":true,"threshold_on_ppm":700,"threshold_off_ppm":650,"received_at":"2026-09-11T12:00:00Z","connection":"connected"}
