@@ -11,9 +11,20 @@ const els = {
   pump: $('#pump-command'), control: $('#control-status'), count: $('#history-count'), empty: $('#chart-empty'),
   chart: $('#chart'), organism: $('#organism'), photoCoefficient: $('#photo-coefficient'),
   oxygen: $('#oxygen-value'), volume: $('#culture-volume'), volumeValue: $('#volume-value'),
-  thresholdForm: $('#threshold-form'), thresholdOn: $('#threshold-on'), thresholdOff: $('#threshold-off'),
-  saveThresholds: $('#save-thresholds'), configFeedback: $('#config-feedback')
+  temperatureAir: $('#temperature-air'), humidity: $('#humidity'), illuminance: $('#illuminance'),
+  temperatureCulture: $('#temperature-culture'), ph: $('#ph-value'), phVoltage: $('#ph-voltage'),
+  chartLegend: $('#chart-legend')
 };
+
+const SERIES = [
+  {key:'co2_ppm', label:'CO₂', unit:'ppm', color:'#b799ff'},
+  {key:'temperature_air_c', label:'Temp. ambiente', unit:'°C', color:'#ff9f72'},
+  {key:'humidity_rh', label:'Humedad', unit:'%RH', color:'#5cc8ff'},
+  {key:'illuminance_lux', label:'Luz', unit:'lux', color:'#ffe36e'},
+  {key:'temperature_culture_c', label:'Temp. cultivo', unit:'°C', color:'#7ee768'},
+  {key:'ph', label:'pH', unit:'pH', color:'#ff76ba'},
+  {key:'ph_voltage_v', label:'Voltaje pH', unit:'V', color:'#c7cbd1'}
+];
 
 let mode = 'demo';
 let active = false;
@@ -24,12 +35,10 @@ let segment = 0;
 let history = [];
 let latestValid = null;
 let gapPending = false;
-let thresholdsDirty = false;
-let savingThresholds = false;
 let demoPump = false;
 let serialFresh = false;
 let cultureVolume = 5;
-let currentThresholdOn = 700;
+let currentThresholdOn = 1000;
 let targetLayoutSeed = 0;
 let visualLayoutSeed = 0;
 
@@ -58,16 +67,9 @@ function clearLive(reason, sensorLabel = 'Sin datos') {
   els.sensor.textContent = sensorLabel;
   els.pump.textContent = 'Sin datos';
   els.control.textContent = 'Sin datos';
+  [els.temperatureAir, els.humidity, els.illuminance, els.temperatureCulture, els.ph, els.phVoltage]
+    .forEach((element) => { element.textContent = '—'; });
   updateDerivedMetrics();
-}
-
-function setConfigFeedback(message, kind = '') {
-  els.configFeedback.textContent = message;
-  els.configFeedback.className = `config-feedback ${kind}`.trim();
-}
-
-function updateThresholdButton() {
-  els.saveThresholds.disabled = savingThresholds || mode !== 'serial' || !active || !device.port || !serialFresh;
 }
 
 function statusLabel(status) {
@@ -79,14 +81,13 @@ function pumpLabel(command) {
 }
 
 function validateReading(d, requireEnvelope = false) {
-  if (!d || d.schema_version !== 2 || d.type !== 'telemetry' || !Number.isInteger(d.seq) || d.seq < 0 ||
+  const nullableNumbers = ['temperature_air_c','humidity_rh','illuminance_lux','temperature_culture_c','ph_voltage_v','ph'];
+  if (!d || d.schema_version !== 3 || d.type !== 'telemetry' || !Number.isInteger(d.seq) || d.seq < 0 ||
       !Number.isInteger(d.uptime_ms) || d.uptime_ms < 0 ||
-      !['ok','warming_up','sensor_error'].includes(d.sensor_status) ||
+      !['ok','warming_up','sensor_error'].includes(d.co2_status) ||
       !['on','off'].includes(d.pump_command) || d.control_mode !== 'automatic' || d.control_enabled !== true ||
-      !Number.isInteger(d.threshold_on_ppm) || !Number.isInteger(d.threshold_off_ppm) ||
-      d.threshold_on_ppm < 400 || d.threshold_on_ppm > 5000 || d.threshold_off_ppm < 400 ||
-      d.threshold_off_ppm >= d.threshold_on_ppm || d.threshold_on_ppm-d.threshold_off_ppm < 20 ||
-      (d.sensor_status === 'ok' ? !(Number.isInteger(d.co2_ppm) && d.co2_ppm >= 400 && d.co2_ppm <= 5000) : d.co2_ppm !== null)) return false;
+      d.threshold_ppm !== 1000 || nullableNumbers.some((key) => d[key] !== null && !Number.isFinite(d[key])) ||
+      (d.co2_status === 'ok' ? !(Number.isInteger(d.co2_ppm) && d.co2_ppm >= 0 && d.co2_ppm <= 5000) : d.co2_ppm !== null)) return false;
   if (requireEnvelope && (d.connection !== 'connected' || !Number.isFinite(Date.parse(d.received_at)))) return false;
   return true;
 }
@@ -95,34 +96,22 @@ function acceptReading(d, source) {
   const receivedAt = Date.parse(d.received_at) || Date.now();
   lastReceived = receivedAt;
   gapPending = false;
-  els.sensor.textContent = statusLabel(d.sensor_status);
+  els.sensor.textContent = statusLabel(d.co2_status);
   els.pump.textContent = pumpLabel(d.pump_command);
   els.control.textContent = 'Automático';
-  currentThresholdOn = d.threshold_on_ppm;
+  currentThresholdOn = d.threshold_ppm;
   targetLayoutSeed = (d.seq * .61803398875) % 1;
-  if (!thresholdsDirty && !savingThresholds) {
-    els.thresholdOn.value = d.threshold_on_ppm;
-    els.thresholdOff.value = d.threshold_off_ppm;
-  }
-  if (d.sensor_status !== 'ok' || d.co2_ppm === null) {
-    clearLive(d.sensor_status === 'warming_up' ? 'El sensor está en calentamiento' : 'La lectura del sensor no es válida', statusLabel(d.sensor_status));
-    els.pump.textContent = pumpLabel(d.pump_command);
-    els.control.textContent = 'Automático';
-    return;
-  }
-  latestValid = d.co2_ppm;
+  latestValid = d.co2_status === 'ok' ? d.co2_ppm : null;
   updateDerivedMetrics();
-  els.value.textContent = String(d.co2_ppm);
+  els.value.textContent = d.co2_ppm ?? '—';
+  const show = (element, value, digits) => { element.textContent = value === null ? '—' : Number(value).toLocaleString('es-CL', {minimumFractionDigits:digits, maximumFractionDigits:digits}); };
+  show(els.temperatureAir, d.temperature_air_c, 1); show(els.humidity, d.humidity_rh, 1);
+  show(els.illuminance, d.illuminance_lux, 0); show(els.temperatureCulture, d.temperature_culture_c, 1);
+  show(els.ph, d.ph, 2); show(els.phVoltage, d.ph_voltage_v, 2);
   els.dataState.textContent = source === 'demo' ? 'SIMULADO · ACTIVO' : 'LECTURA VÁLIDA';
   els.dataState.classList.add('valid');
   els.received.textContent = `Recibido ${new Date(receivedAt).toLocaleTimeString('es-CL')}`;
-  const coefficient = photosyntheticCoefficient(d.co2_ppm);
-  history.push({
-    received_at:new Date(receivedAt).toISOString(), co2_ppm:d.co2_ppm,
-    photosynthetic_coefficient:coefficient,
-    oxygen_equivalent_ml_h:cultureVolume*coefficient*(d.co2_ppm/1000)*2,
-    culture_volume_l:cultureVolume, source, segment
-  });
+  history.push({...d, received_at:new Date(receivedAt).toISOString(), source, segment});
   trimHistory();
   drawChart();
 }
@@ -151,7 +140,6 @@ async function stopCurrent() {
   serialFresh = false;
   els.connect.disabled = false;
   els.disconnect.disabled = true;
-  updateThresholdButton();
 }
 
 async function selectMode(nextMode) {
@@ -168,7 +156,6 @@ async function selectMode(nextMode) {
   els.connect.querySelector('span').textContent = mode === 'serial' ? 'Conectar Arduino' : mode === 'file' ? 'Leer archivo local' : 'Iniciar demostración';
   setConnection('Sin conectar');
   clearLive('Aún no se reciben mediciones');
-  setConfigFeedback(mode === 'serial' ? 'Conecta el Arduino por USB directo para modificar sus umbrales.' : 'Los umbrales solo se modifican mediante USB directo.');
   setFeedback(mode === 'demo' ? 'Demostración desactivada. Los datos reales permanecen separados.' : 'Ninguna fuente está leyendo datos.');
 }
 
@@ -193,10 +180,8 @@ async function startSerial() {
     active = true;
     serialFresh = false;
     els.disconnect.disabled = false;
-    updateThresholdButton();
   } catch (error) {
     els.connect.disabled = false;
-    updateThresholdButton();
     setConnection('Sin conectar', 'warning');
     setFeedback(friendlySerialError(error), error?.name !== 'NotFoundError');
   }
@@ -236,18 +221,19 @@ function startFile() {
 function makeDemoReading() {
   const elapsed = Date.now() / 1000;
   const ppm = Math.round(870 + Math.sin(elapsed / 18) * 105 + Math.sin(elapsed / 5.7) * 24);
-  if (ppm >= 700) demoPump = true;
-  else if (ppm <= 650) demoPump = false;
-  return {schema_version:2, type:'telemetry', seq:history.length, uptime_ms:Math.round(performance.now()), co2_ppm:ppm,
-    sensor_status:'ok', pump_command:demoPump ? 'on' : 'off', control_mode:'automatic', control_enabled:true,
-    threshold_on_ppm:700, threshold_off_ppm:650,
+  demoPump = ppm >= 1000;
+  return {schema_version:3, type:'telemetry', seq:history.length, uptime_ms:Math.round(performance.now()), co2_ppm:ppm,
+    temperature_air_c:22.5+Math.sin(elapsed/31)*1.8, humidity_rh:68+Math.sin(elapsed/23)*7,
+    illuminance_lux:720+Math.sin(elapsed/12)*210, temperature_culture_c:21.8+Math.sin(elapsed/47)*1.1,
+    ph_voltage_v:2.51+Math.sin(elapsed/38)*.08, ph:6.95+Math.sin(elapsed/38)*.32,
+    co2_status:'ok', pump_command:demoPump ? 'on' : 'off', control_mode:'automatic', control_enabled:true,
+    threshold_ppm:1000,
     received_at:new Date().toISOString(), connection:'connected'};
 }
 
 function startDemo() {
   demoPump = false;
   active = true; els.connect.disabled = true; els.disconnect.disabled = false;
-  updateThresholdButton();
   setConnection('Simulación activa', 'connected');
   setFeedback('DATOS SIMULADOS: serie ficticia separada de las lecturas reales.');
   acceptReading(makeDemoReading(), 'demo');
@@ -272,75 +258,27 @@ device.addEventListener('data', ({detail}) => {
   const firstTelemetry = !serialFresh;
   serialFresh = true;
   acceptReading(detail, 'serial');
-  updateThresholdButton();
   setConnection('Arduino conectado', 'connected');
-  setFeedback(detail.sensor_status === 'ok' ? 'Recibiendo datos por USB directo.' : `Arduino conectado: ${statusLabel(detail.sensor_status).toLowerCase()}.`);
-  if (firstTelemetry) setConfigFeedback(`Umbrales informados por Arduino: ${detail.threshold_on_ppm}/${detail.threshold_off_ppm} ppm.`);
+  setFeedback(detail.co2_status === 'ok' ? 'Recibiendo todos los sensores por USB directo.' : `Arduino conectado: ${statusLabel(detail.co2_status).toLowerCase()}.`);
 });
 device.addEventListener('status', ({detail}) => {
   if (mode !== 'serial') return;
   if (detail === 'connected') {
     setConnection('Arduino conectado', 'connected');
     setFeedback('Puerto abierto; esperando datos del Arduino…');
-    updateThresholdButton();
   } else if (detail === 'stale') {
-    serialFresh = false; updateThresholdButton();
+    serialFresh = false;
     setConnection('Sin datos', 'warning'); clearLive('Más de 10 segundos sin datos'); setFeedback('El puerto sigue abierto, pero la lectura está desactualizada.', true); markGap();
   } else if (detail === 'disconnected') {
     const wasActive = active; active = false; serialFresh = false; els.connect.disabled = false; els.disconnect.disabled = true;
-    updateThresholdButton();
     setConnection('Desconectado'); clearLive('Puerto USB desconectado');
     if (wasActive) { setFeedback('Se perdió o cerró el puerto. El control del Arduino continúa localmente si conserva alimentación.', true); markGap(); }
   }
 });
 device.addEventListener('warning', ({detail}) => setFeedback(`Advertencia USB: ${detail}`, true));
 
-function thresholdInputError(onPpm, offPpm) {
-  if (!Number.isInteger(onPpm) || !Number.isInteger(offPpm)) return 'Ambos umbrales deben ser números enteros.';
-  if (onPpm < 400 || onPpm > 5000 || offPpm < 400 || offPpm > 5000) return 'Los umbrales deben estar entre 400 y 5000 ppm.';
-  if (offPpm >= onPpm) return 'El umbral de apagado debe ser menor que el de encendido.';
-  if (onPpm - offPpm < 20) return 'La separación entre umbrales debe ser de al menos 20 ppm.';
-  return null;
-}
-
-async function saveThresholdConfiguration(event) {
-  event.preventDefault();
-  const onPpm = Number(els.thresholdOn.value);
-  const offPpm = Number(els.thresholdOff.value);
-  const validationError = thresholdInputError(onPpm, offPpm);
-  if (validationError) {
-    setConfigFeedback(validationError, 'error');
-    return;
-  }
-  if (mode !== 'serial' || !active || !device.port) {
-    setConfigFeedback('Conecta el Arduino mediante USB directo antes de enviar la configuración.', 'error');
-    return;
-  }
-  savingThresholds = true;
-  updateThresholdButton();
-  setConfigFeedback('Configuración enviada; esperando confirmación del Arduino…');
-  try {
-    const ack = await device.setThresholds(onPpm, offPpm, true);
-    els.thresholdOn.value = ack.threshold_on_ppm;
-    els.thresholdOff.value = ack.threshold_off_ppm;
-    thresholdsDirty = false;
-    setConfigFeedback(`Umbrales confirmados y guardados en Arduino: ${ack.threshold_on_ppm}/${ack.threshold_off_ppm} ppm.`, 'success');
-  } catch (error) {
-    const errors = {
-      threshold_out_of_range:'Arduino rechazó los valores: deben estar entre 400 y 5000 ppm.',
-      threshold_off_must_be_lower:'Arduino rechazó los valores: apagado debe ser menor que encendido.',
-      threshold_gap_too_small:'Arduino rechazó los valores: la separación mínima es 20 ppm.',
-      invalid_json:'Arduino rechazó el formato del comando.'
-    };
-    setConfigFeedback(errors[error.code] || `Configuración no confirmada: ${error.message}`, 'error');
-  } finally {
-    savingThresholds = false;
-    updateThresholdButton();
-  }
-}
-
 function exportHistory() {
-  const payload = {schema_version:2, exported_at:new Date().toISOString(), note:'Historial de recepción de esta sesión; pump_command no es caudal medido.', samples:history};
+  const payload = {schema_version:3, exported_at:new Date().toISOString(), note:'Historial de todos los sensores de esta sesión; pump_command no es caudal medido.', samples:history};
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob); link.download = `historial-co2-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;
@@ -351,12 +289,6 @@ document.querySelectorAll('.source-button').forEach((button) => button.addEventL
 els.connect.addEventListener('click', connect);
 els.disconnect.addEventListener('click', disconnect);
 els.export.addEventListener('click', exportHistory);
-els.thresholdForm.addEventListener('submit', saveThresholdConfiguration);
-[els.thresholdOn, els.thresholdOff].forEach((input) => input.addEventListener('input', () => {
-  thresholdsDirty = true;
-  const error = thresholdInputError(Number(els.thresholdOn.value), Number(els.thresholdOff.value));
-  setConfigFeedback(error || 'Valores listos para enviar al Arduino.', error ? 'error' : '');
-}));
 els.volume.addEventListener('input', () => {
   cultureVolume = Number(els.volume.value);
   els.volumeValue.textContent = `${cultureVolume.toLocaleString('es-CL', {minimumFractionDigits:1, maximumFractionDigits:1})} L`;
@@ -394,18 +326,24 @@ function drawChart() {
   const pad = {l:48,r:16,t:18,b:32}; const now = Date.now(), start = now - TEN_MINUTES;
   const points = history.filter((p) => Date.parse(p.received_at) >= start);
   if (!points.length) return;
-  let min = Math.min(...points.map(p=>p.co2_ppm)), max = Math.max(...points.map(p=>p.co2_ppm));
-  min = Math.floor((min - 80)/100)*100; max = Math.ceil((max + 80)/100)*100; if (max-min < 200) max=min+200;
   ctx.font='10px DM Mono'; ctx.fillStyle='#71877e'; ctx.strokeStyle='#203a32'; ctx.lineWidth=1;
-  for (let i=0;i<4;i++) { const y=pad.t+(h-pad.t-pad.b)*i/3; ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke(); const label=Math.round(max-(max-min)*i/3);ctx.fillText(label,pad.l-38,y+3); }
+  for (let i=0;i<4;i++) { const y=pad.t+(h-pad.t-pad.b)*i/3; ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke(); }
   for (let i=0;i<=5;i++) { const x=pad.l+(w-pad.l-pad.r)*i/5; const mins=10-i*2; ctx.fillText(i===5?'ahora':`−${mins}m`,x-12,h-8); }
-  const xFor=t=>pad.l+(t-start)/TEN_MINUTES*(w-pad.l-pad.r); const yFor=v=>pad.t+(max-v)/(max-min)*(h-pad.t-pad.b);
-  ctx.strokeStyle='#c8ff4d';ctx.lineWidth=2;ctx.lineJoin='round';ctx.beginPath(); let previous=null;
-  for (const point of points) { const x=xFor(Date.parse(point.received_at)),y=yFor(point.co2_ppm); if (!previous || previous.segment!==point.segment || previous.source!==point.source) ctx.moveTo(x,y); else ctx.lineTo(x,y); previous=point; }
-  ctx.stroke();
+  const xFor=t=>pad.l+(t-start)/TEN_MINUTES*(w-pad.l-pad.r);
+  for (const series of SERIES) {
+    const values=points.map(p=>p[series.key]).filter(Number.isFinite); if (!values.length) continue;
+    let min=Math.min(...values), max=Math.max(...values); if (min===max) { min-=1; max+=1; }
+    const margin=(max-min)*.08; min-=margin; max+=margin;
+    const yFor=v=>pad.t+(max-v)/(max-min)*(h-pad.t-pad.b);
+    ctx.strokeStyle=series.color; ctx.lineWidth=series.key==='co2_ppm'?2.4:1.6; ctx.lineJoin='round'; ctx.beginPath(); let previous=null;
+    for (const point of points) { const value=point[series.key]; if (!Number.isFinite(value)) { previous=null; continue; } const x=xFor(Date.parse(point.received_at)),y=yFor(value); if (!previous || previous.segment!==point.segment || previous.source!==point.source) ctx.moveTo(x,y); else ctx.lineTo(x,y); previous=point; }
+    ctx.stroke();
+  }
   const segments=[...new Set(points.map(p=>p.segment))];
   for (const seg of segments.slice(1)) { const p=points.find(item=>item.segment===seg); if(!p)continue;const x=xFor(Date.parse(p.received_at));ctx.strokeStyle='#ff907d';ctx.setLineDash([3,5]);ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,h-pad.b);ctx.stroke();ctx.setLineDash([]); }
 }
+
+els.chartLegend.innerHTML = SERIES.map((series) => `<span class="legend-item"><i style="--series-color:${series.color}"></i>${series.label} <small>${series.unit}</small></span>`).join('');
 
 let visualPpm = 400;
 const fract = (value) => value - Math.floor(value);

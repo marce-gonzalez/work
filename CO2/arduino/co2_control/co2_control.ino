@@ -1,289 +1,88 @@
-#include <EEPROM.h>
+#include <Wire.h>
+#include <Adafruit_SHT31.h>
+#include <BH1750.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include <SoftwareSerial.h>
 
-// Arduino UNO R3. Protocolo de lectura compatible MH-Z19: verificar en MH-Z1911A.
-SoftwareSerial sensor(10, 11); // RX Arduino <- TX sensor; TX Arduino -> RX sensor
-const byte PUMP_PIN = 5;
-const bool ENABLE_PUMP_CONTROL = true;
-const unsigned long WARMUP_MS = 60000, PERIOD_MS = 2000, DWELL_MS = 30000;
-const int ON_PPM = 700, OFF_PPM = 650;
-const int MIN_PPM = 400, MAX_PPM = 5000, MIN_GAP_PPM = 20;
+// BIOCAP: telemetria NDJSON para la plataforma web.
+const byte PIN_DS18B20 = 2, PIN_BOMBA = 5, PIN_CO2_RX = 10, PIN_CO2_TX = 11, PIN_PH = A0;
+const unsigned long PERIODO_MS = 2000, CALENTAMIENTO_CO2_MS = 60000;
+const int UMBRAL_CO2_PPM = 1000;
+const float VOLTAJE_ADC = 5.0, CUENTAS_ADC = 1023.0;
+float VOLTAJE_PH7 = 2.50, VOLTAJE_PH4 = 3.04;
 
-const uint16_t EEPROM_MAGIC = 0xC027;
-const byte EEPROM_VERSION = 1;
-struct __attribute__((packed)) StoredThresholds {
-  uint16_t magic;
-  byte version;
-  uint16_t onPpm;
-  uint16_t offPpm;
-  byte checksum;
-};
+Adafruit_SHT31 sht31 = Adafruit_SHT31();
+BH1750 sensorLuz;
+OneWire busOneWire(PIN_DS18B20);
+DallasTemperature sensorCultivo(&busOneWire);
+SoftwareSerial puertoCO2(PIN_CO2_RX, PIN_CO2_TX);
+bool sht31Disponible = false, bh1750Disponible = false, bombaEncendida = false;
+unsigned long ultimaLectura = 0, secuencia = 0;
 
-const byte COMMAND_BUFFER_SIZE = 112;
-char commandBuffer[COMMAND_BUFFER_SIZE];
-byte commandLength = 0;
-bool commandOverflow = false;
-int thresholdOnPpm = ON_PPM, thresholdOffPpm = OFF_PPM;
-bool pump = false;
-unsigned long lastRead = 0, lastChange = 0, sequence = 0;
-
-bool thresholdsValid(int onPpm, int offPpm) {
-  return onPpm >= MIN_PPM && onPpm <= MAX_PPM &&
-         offPpm >= MIN_PPM && offPpm <= MAX_PPM &&
-         offPpm < onPpm && onPpm - offPpm >= MIN_GAP_PPM;
+void imprimirFloatJson(float valor, byte decimales) {
+  if (isnan(valor) || isinf(valor)) Serial.print(F("null")); else Serial.print(valor, decimales);
 }
-
-byte settingsChecksum(const StoredThresholds &value) {
-  return (byte)(value.magic ^ (value.magic >> 8) ^ value.version ^
-                value.onPpm ^ (value.onPpm >> 8) ^ value.offPpm ^ (value.offPpm >> 8) ^ 0xA5);
+void controlarBomba(bool encender) {
+  bombaEncendida = encender;
+  digitalWrite(PIN_BOMBA, encender ? HIGH : LOW);
 }
-
-void loadThresholds() {
-  StoredThresholds stored;
-  EEPROM.get(0, stored);
-  if (stored.magic == EEPROM_MAGIC && stored.version == EEPROM_VERSION &&
-      stored.checksum == settingsChecksum(stored) && thresholdsValid(stored.onPpm, stored.offPpm)) {
-    thresholdOnPpm = stored.onPpm;
-    thresholdOffPpm = stored.offPpm;
-  }
+float leerVoltajePH() {
+  const byte MUESTRAS = 20; unsigned long suma = 0;
+  for (byte i = 0; i < MUESTRAS; i++) { suma += analogRead(PIN_PH); delay(10); }
+  return (suma / float(MUESTRAS)) * VOLTAJE_ADC / CUENTAS_ADC;
 }
-
-void saveThresholdsIfChanged() {
-  StoredThresholds next = {EEPROM_MAGIC, EEPROM_VERSION, (uint16_t)thresholdOnPpm, (uint16_t)thresholdOffPpm, 0};
-  next.checksum = settingsChecksum(next);
-  StoredThresholds current;
-  EEPROM.get(0, current);
-  if (memcmp(&current, &next, sizeof(next)) != 0) {
-    EEPROM.put(0, next); // put usa update internamente: no reescribe bytes iguales.
-  }
+float convertirVoltajeAPh(float voltaje) {
+  float diferencia = VOLTAJE_PH4 - VOLTAJE_PH7;
+  if (abs(diferencia) < 0.01) return NAN;
+  return 7.0 + (voltaje - VOLTAJE_PH7) * (4.0 - 7.0) / diferencia;
 }
-
-void setPump(bool value) {
-  if (pump != value) {
-    pump = value;
-    lastChange = millis();
-  }
-  digitalWrite(PUMP_PIN, pump ? HIGH : LOW); // ON/OFF; no PWM.
+byte checksumMHZ19(const byte paquete[9]) {
+  byte suma = 0; for (byte i = 1; i < 8; i++) suma += paquete[i]; return 0xFF - suma + 1;
 }
-
-void readCommands();
-
-int readCO2() {
-  const byte request[9] = {0xFF, 0x01, 0x86, 0, 0, 0, 0, 0, 0x79};
-  while (sensor.available()) sensor.read();
-  sensor.write(request, 9);
-  byte response[9], count = 0;
-  unsigned long start = millis();
-  while (millis() - start < 300) {
-    readCommands(); // Evita desbordar el pequeño búfer USB del UNO durante la espera del sensor.
-    if (!sensor.available()) continue;
-    byte b = sensor.read();
-    if (count == 0 && b != 0xFF) continue;
-    if (count == 1 && b != 0x86) {
-      count = (b == 0xFF) ? 1 : 0;
-      continue;
-    }
-    response[count++] = b;
-    if (count == 9) {
-      byte sum = 0;
-      for (byte i = 1; i < 9; i++) sum += response[i];
-      if (sum != 0) return -1;
-      int ppm = ((unsigned int)response[2] << 8) | response[3];
-      return (ppm >= MIN_PPM && ppm <= MAX_PPM) ? ppm : -1;
-    }
-  }
-  return -1;
+int leerMHZ19() {
+  const byte comando[9] = {0xFF, 0x01, 0x86, 0, 0, 0, 0, 0, 0x79}; byte respuesta[9];
+  while (puertoCO2.available()) puertoCO2.read();
+  puertoCO2.listen(); puertoCO2.write(comando, 9); puertoCO2.flush();
+  unsigned long inicio = millis(); byte recibidos = 0;
+  while (recibidos < 9 && millis() - inicio < 1000) if (puertoCO2.available()) respuesta[recibidos++] = puertoCO2.read();
+  if (recibidos != 9 || respuesta[0] != 0xFF || respuesta[1] != 0x86 || respuesta[8] != checksumMHZ19(respuesta)) return -1;
+  int ppm = int(respuesta[2]) * 256 + respuesta[3]; return (ppm >= 0 && ppm <= 5000) ? ppm : -1;
 }
-
-const char *skipSpaces(const char *p) {
-  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') ++p;
-  return p;
-}
-
-bool consumeChar(const char *&p, char expected) {
-  p = skipSpaces(p);
-  if (*p != expected) return false;
-  ++p;
-  return true;
-}
-
-bool readJsonString(const char *&p, char *output, byte capacity) {
-  p = skipSpaces(p);
-  if (*p++ != '"') return false;
-  byte length = 0;
-  while (*p && *p != '"') {
-    // Este protocolo no necesita escapes ni caracteres de control.
-    if (*p == '\\' || (byte)*p < 0x20 || length >= capacity - 1) return false;
-    output[length++] = *p++;
-  }
-  if (*p != '"') return false;
-  ++p;
-  output[length] = '\0';
-  return true;
-}
-
-bool readJsonInt(const char *&p, int &value) {
-  p = skipSpaces(p);
-  if (*p < '0' || *p > '9') return false;
-  long result = 0;
-  while (*p >= '0' && *p <= '9') {
-    result = result * 10 + (*p - '0');
-    if (result > 32767) return false;
-    ++p;
-  }
-  value = (int)result;
-  return true;
-}
-
-bool readJsonBool(const char *&p, bool &value) {
-  p = skipSpaces(p);
-  if (strncmp(p, "true", 4) == 0) {
-    p += 4;
-    value = true;
-    return true;
-  }
-  if (strncmp(p, "false", 5) == 0) {
-    p += 5;
-    value = false;
-    return true;
-  }
-  return false;
-}
-
-void sendAck(bool accepted, const char *error, bool saved) {
-  Serial.print(F("{\"schema_version\":2,\"type\":\"ack\",\"command\":\"set_thresholds\",\"accepted\":"));
-  Serial.print(accepted ? F("true") : F("false"));
-  if (accepted) {
-    Serial.print(F(",\"threshold_on_ppm\":")); Serial.print(thresholdOnPpm);
-    Serial.print(F(",\"threshold_off_ppm\":")); Serial.print(thresholdOffPpm);
-    Serial.print(F(",\"saved\":")); Serial.print(saved ? F("true") : F("false"));
-  } else {
-    Serial.print(F(",\"error\":\"")); Serial.print(error); Serial.print('"');
-  }
-  Serial.println('}');
-}
-
-void processCommand(char *json) {
-  const char *p = json;
-  char key[18], command[20] = "";
-  int onPpm = 0, offPpm = 0;
-  bool save = false;
-  byte fields = 0;
-  if (!consumeChar(p, '{')) {
-    sendAck(false, "invalid_json", false);
-    return;
-  }
-  while (true) {
-    p = skipSpaces(p);
-    if (*p == '}') { ++p; break; }
-    if (!readJsonString(p, key, sizeof(key)) || !consumeChar(p, ':')) {
-      sendAck(false, "invalid_json", false); return;
-    }
-    if (strcmp(key, "command") == 0 && !(fields & 1)) {
-      if (!readJsonString(p, command, sizeof(command))) { sendAck(false, "invalid_json", false); return; }
-      fields |= 1;
-    } else if (strcmp(key, "on_ppm") == 0 && !(fields & 2)) {
-      if (!readJsonInt(p, onPpm)) { sendAck(false, "invalid_json", false); return; }
-      fields |= 2;
-    } else if (strcmp(key, "off_ppm") == 0 && !(fields & 4)) {
-      if (!readJsonInt(p, offPpm)) { sendAck(false, "invalid_json", false); return; }
-      fields |= 4;
-    } else if (strcmp(key, "save") == 0 && !(fields & 8)) {
-      if (!readJsonBool(p, save)) { sendAck(false, "invalid_json", false); return; }
-      fields |= 8;
-    } else {
-      sendAck(false, "invalid_json", false); return;
-    }
-    p = skipSpaces(p);
-    if (*p == ',') {
-      ++p;
-      if (*skipSpaces(p) == '}') { sendAck(false, "invalid_json", false); return; }
-      continue;
-    }
-    if (*p == '}') { ++p; break; }
-    sendAck(false, "invalid_json", false); return;
-  }
-  if (*skipSpaces(p) != '\0' || fields != 15) {
-    sendAck(false, "invalid_json", false); return;
-  }
-  if (strcmp(command, "set_thresholds") != 0) {
-    sendAck(false, "unsupported_command", false); return;
-  }
-  if (onPpm < MIN_PPM || onPpm > MAX_PPM || offPpm < MIN_PPM || offPpm > MAX_PPM) {
-    sendAck(false, "threshold_out_of_range", false);
-    return;
-  }
-  if (offPpm >= onPpm) {
-    sendAck(false, "threshold_off_must_be_lower", false);
-    return;
-  }
-  if (onPpm - offPpm < MIN_GAP_PPM) {
-    sendAck(false, "threshold_gap_too_small", false);
-    return;
-  }
-  thresholdOnPpm = onPpm;
-  thresholdOffPpm = offPpm;
-  if (save) saveThresholdsIfChanged();
-  sendAck(true, NULL, save);
-}
-
-void readCommands() {
-  while (Serial.available()) {
-    char c = (char)Serial.read();
-    if (c == '\n') {
-      if (commandOverflow) sendAck(false, "command_too_long", false);
-      else if (commandLength > 0) {
-        commandBuffer[commandLength] = '\0';
-        processCommand(commandBuffer);
-      }
-      commandLength = 0;
-      commandOverflow = false;
-    } else if (c != '\r' && !commandOverflow) {
-      if (commandLength < COMMAND_BUFFER_SIZE - 1) commandBuffer[commandLength++] = c;
-      else commandOverflow = true;
-    }
-  }
-}
-
-void sendTelemetry(int ppm, const char *status) {
-  Serial.print(F("{\"schema_version\":2,\"type\":\"telemetry\",\"seq\":")); Serial.print(sequence++);
+void enviarTelemetria(float tempAmbiente, float humedad, float lux, float tempCultivo, float voltajePH, float ph, int co2, const __FlashStringHelper *estadoCO2) {
+  Serial.print(F("{\"schema_version\":3,\"type\":\"telemetry\",\"seq\":")); Serial.print(secuencia++);
   Serial.print(F(",\"uptime_ms\":")); Serial.print(millis());
-  Serial.print(F(",\"co2_ppm\":"));
-  if (ppm < 0) Serial.print(F("null")); else Serial.print(ppm);
-  Serial.print(F(",\"sensor_status\":\"")); Serial.print(status);
-  Serial.print(F("\",\"pump_command\":\"")); Serial.print(pump ? F("on") : F("off"));
-  Serial.print(F("\",\"control_mode\":\"automatic\",\"control_enabled\":"));
-  Serial.print(ENABLE_PUMP_CONTROL ? F("true") : F("false"));
-  Serial.print(F(",\"threshold_on_ppm\":")); Serial.print(thresholdOnPpm);
-  Serial.print(F(",\"threshold_off_ppm\":")); Serial.print(thresholdOffPpm);
+  Serial.print(F(",\"temperature_air_c\":")); imprimirFloatJson(tempAmbiente, 2);
+  Serial.print(F(",\"humidity_rh\":")); imprimirFloatJson(humedad, 2);
+  Serial.print(F(",\"illuminance_lux\":")); imprimirFloatJson(lux, 1);
+  Serial.print(F(",\"temperature_culture_c\":")); imprimirFloatJson(tempCultivo, 2);
+  Serial.print(F(",\"ph_voltage_v\":")); imprimirFloatJson(voltajePH, 3);
+  Serial.print(F(",\"ph\":")); imprimirFloatJson(ph, 2);
+  Serial.print(F(",\"co2_ppm\":")); if (co2 < 0) Serial.print(F("null")); else Serial.print(co2);
+  Serial.print(F(",\"co2_status\":\"")); Serial.print(estadoCO2);
+  Serial.print(F("\",\"pump_command\":\"")); Serial.print(bombaEncendida ? F("on") : F("off"));
+  Serial.print(F("\",\"control_mode\":\"automatic\",\"control_enabled\":true,\"threshold_ppm\":")); Serial.print(UMBRAL_CO2_PPM);
   Serial.println('}');
 }
-
-void setup() {
-  digitalWrite(PUMP_PIN, LOW);
-  pinMode(PUMP_PIN, OUTPUT);
-  loadThresholds();
-  Serial.begin(115200);
-  sensor.begin(9600);
+void leerSensores() {
+  float tempAmbiente = NAN, humedad = NAN, lux = NAN, tempCultivo = NAN;
+  if (sht31Disponible) { tempAmbiente = sht31.readTemperature(); humedad = sht31.readHumidity(); }
+  if (bh1750Disponible) lux = sensorLuz.readLightLevel();
+  sensorCultivo.requestTemperatures(); tempCultivo = sensorCultivo.getTempCByIndex(0);
+  if (tempCultivo == DEVICE_DISCONNECTED_C) tempCultivo = NAN;
+  float voltajePH = leerVoltajePH(), ph = convertirVoltajeAPh(voltajePH);
+  int co2 = -1; const __FlashStringHelper *estadoCO2 = F("warming_up");
+  if (millis() >= CALENTAMIENTO_CO2_MS) { co2 = leerMHZ19(); estadoCO2 = co2 < 0 ? F("sensor_error") : F("ok"); }
+  controlarBomba(co2 >= UMBRAL_CO2_PPM); // Error o calentamiento: bomba apagada.
+  enviarTelemetria(tempAmbiente, humedad, lux, tempCultivo, voltajePH, ph, co2, estadoCO2);
 }
-
+void setup() {
+  digitalWrite(PIN_BOMBA, LOW); pinMode(PIN_BOMBA, OUTPUT);
+  Serial.begin(115200); puertoCO2.begin(9600); Wire.begin(); sensorCultivo.begin();
+  sht31Disponible = sht31.begin(0x44);
+  bh1750Disponible = sensorLuz.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23);
+}
 void loop() {
-  readCommands();
-  unsigned long now = millis();
-  if (now - lastRead < PERIOD_MS) return;
-  lastRead = now;
-  int ppm = -1;
-  const char *status = "warming_up";
-  if (now >= WARMUP_MS) {
-    ppm = readCO2();
-    status = ppm < 0 ? "sensor_error" : "ok";
-  }
-  if (!ENABLE_PUMP_CONTROL || ppm < 0) {
-    setPump(false); // Calentamiento y cualquier error apagan inmediatamente.
-  } else if (millis() - lastChange >= DWELL_MS) {
-    if (!pump && ppm >= thresholdOnPpm) setPump(true);
-    else if (pump && ppm <= thresholdOffPpm) setPump(false);
-  }
-  sendTelemetry(ppm, status);
-  readCommands();
+  unsigned long ahora = millis(); if (ahora - ultimaLectura < PERIODO_MS) return;
+  ultimaLectura = ahora; leerSensores();
 }

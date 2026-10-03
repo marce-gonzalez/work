@@ -56,11 +56,13 @@ h2 { margin:.45rem 0 0; font-size:clamp(1.6rem,3vw,2.5rem); font-weight:400; let
 .config-feedback { min-height:1.35em; margin:1rem 0 0; color:var(--muted); font-size:.75rem; }
 .config-feedback.success { color:var(--acid); }
 .config-feedback.error { color:var(--danger); }
+.control-rule { margin:1.25rem 0 0; color:#b8c5bf; line-height:1.6; }
+.control-rule strong { color:var(--ink); font-weight:500; }
 .culture-section { width:100vw; margin-left:calc(50% - 50vw); border-bottom:1px solid var(--line); }
 .data-state { width:fit-content; margin:1.6rem 0 .5rem; padding:.35rem .55rem; border:1px solid var(--danger); color:var(--danger); font:500 .67rem 'DM Mono',monospace; letter-spacing:.1em; }
 .data-state.valid { border-color:var(--acid); color:var(--acid); }
 .received-time { margin:.2rem 0 2.5rem; text-transform:none; letter-spacing:0; }
-.organism-card { position:relative; margin:0; height:min(960px,96vh); min-height:760px; overflow:hidden; background:#000; }
+.organism-card { position:relative; margin:0; height:min(1120px,112vh); min-height:980px; overflow:hidden; background:#000; }
 .organism-card canvas { width:100%; height:100%; display:block; }
 .visual-dashboard { position:absolute; z-index:2; top:clamp(1.5rem,5vw,4.5rem); left:max(20px,calc((100vw - 1180px)/2)); width:min(350px,calc(100% - 40px)); padding:0; border:0; background:transparent; text-shadow:0 2px 18px #000,0 2px 5px #000; }
 .visual-dashboard h2 { margin:.55rem 0 0; font-size:clamp(2.2rem,4vw,4rem); line-height:.9; }
@@ -90,6 +92,10 @@ h2 { margin:.45rem 0 0; font-size:clamp(1.6rem,3vw,2.5rem); font-weight:400; let
 .legend { display:flex; align-items:center; gap:.5rem; margin-top:1rem; }
 .legend span { width:24px; border-top:2px solid var(--acid); }
 .legend i { width:1px; height:13px; margin-left:1rem; border-left:1px dashed var(--danger); }
+.chart-legend { flex-wrap:wrap; gap:.65rem 1.2rem; text-transform:none; letter-spacing:0; }
+.legend-item { display:inline-flex; align-items:center; gap:.45rem; }
+.legend-item i { width:18px; height:0; margin:0; border:0; border-top:2px solid var(--series-color); }
+.legend-item small { color:#68716d; font-size:.62rem; }
 .notes h2 { max-width:720px; }
 .notes-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:3rem; margin-top:3rem; color:#aebeb7; font-size:.88rem; line-height:1.7; }
 .notes-grid p { margin:0; }
@@ -98,7 +104,7 @@ footer { min-height:110px; display:flex; justify-content:space-between; align-it
 .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
 @media (max-width:800px) {
   .hero { grid-template-columns:1fr; min-height:auto; gap:2rem; padding:4rem 0 3rem; }
-  .organism-card { height:900px; min-height:900px; }
+  .organism-card { height:1120px; min-height:1120px; }
   .visual-dashboard { top:1.25rem; }
   .visual-status { grid-template-columns:1fr 1fr 1fr; }
   .notes-grid { grid-template-columns:1fr; gap:1.4rem; }
@@ -114,7 +120,7 @@ footer { min-height:110px; display:flex; justify-content:space-between; align-it
   .source-description { align-items:flex-start; flex-direction:column; }
   .button-primary,.button-secondary { flex:1; min-width:0; }
   .button-text { width:100%; margin-left:0; text-align:left; padding-left:0; }
-  .organism-card { height:940px; }
+  .organism-card { height:1180px; }
   .visual-dashboard { left:12px; width:calc(100% - 24px); }
   .visual-status { left:12px; right:12px; bottom:6.3rem; gap:.7rem; }
   .organism-card figcaption { left:12px; right:12px; bottom:1rem; }

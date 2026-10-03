@@ -11,11 +11,11 @@ import serial
 def valid(d):
     if not isinstance(d, dict):
         return False
-    status = d.get('sensor_status')
+    status = d.get('co2_status')
     ppm = d.get('co2_ppm')
-    on_ppm = d.get('threshold_on_ppm')
-    off_ppm = d.get('threshold_off_ppm')
-    return (d.get('schema_version') == 2 and
+    measurements = ('temperature_air_c', 'humidity_rh', 'illuminance_lux',
+                    'temperature_culture_c', 'ph_voltage_v', 'ph')
+    return (d.get('schema_version') == 3 and
             d.get('type') == 'telemetry' and
             type(d.get('seq')) is int and d['seq'] >= 0 and
             type(d.get('uptime_ms')) is int and d['uptime_ms'] >= 0 and
@@ -23,9 +23,9 @@ def valid(d):
             d.get('pump_command') in ('on', 'off') and
             d.get('control_mode') == 'automatic' and
             d.get('control_enabled') is True and
-            type(on_ppm) is int and type(off_ppm) is int and
-            400 <= off_ppm < on_ppm <= 5000 and on_ppm - off_ppm >= 20 and
-            ((type(ppm) is int and 400 <= ppm <= 5000) if status == 'ok' else ppm is None))
+            d.get('threshold_ppm') == 1000 and
+            all(d.get(key) is None or type(d.get(key)) in (int, float) for key in measurements) and
+            ((type(ppm) is int and 0 <= ppm <= 5000) if status == 'ok' else ppm is None))
 
 
 def save(path, value):
@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--output', default='data/latest.json')
     args = parser.parse_args()
     path = Path(args.output)
-    unavailable = {'schema_version': 2, 'type': 'telemetry', 'connection': 'disconnected',
+    unavailable = {'schema_version': 3, 'type': 'telemetry', 'connection': 'disconnected',
                    'co2_ppm': None, 'pump_command': None, 'received_at': None}
     save(path, unavailable)
     try:
@@ -61,7 +61,7 @@ def main():
                     last = time.monotonic()
                     d.update(connection='connected', received_at=datetime.now(timezone.utc).isoformat())
                     save(path, d)
-                    print(d['received_at'], d['sensor_status'], d['co2_ppm'], flush=True)
+                    print(d['received_at'], d['co2_status'], d['co2_ppm'], flush=True)
                 if len(buffer) > 4096:
                     buffer = b''
                 if time.monotonic() - last > 10:
